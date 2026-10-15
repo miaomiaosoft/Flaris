@@ -1,8 +1,10 @@
 /**
- * Cloudflare Worker Navigation - V21 Clickable Header Edition
- * 更新内容：
- * 1. [交互优化] 左上角 Logo 与标题支持点击，一键重置分类与搜索，返回初始页。
- * 2. [视觉保留] 完美保留 V20 优雅矢量猫咪呼吸、摇尾巴动画及平滑进度条。
+ * Cloudflare Worker Navigation - V22 Ultimate Polished Edition
+ * 全面优化：
+ * 1. [高级交互] 键盘全局按下 `/` 或 `Ctrl+K` 自动聚焦到顶部搜索框。
+ * 2. [视觉流光] 卡片加入微光悬停边框与高级阴影。
+ * 3. [背景微光] 背景加入缓慢流动的立体光斑（Ambient Blob Animation）。
+ * 4. [平滑切屏] 分类栏目切换与内容渲染加入优雅的交错淡入动效。
  */
 
 const DEFAULT_DATA = {
@@ -15,7 +17,7 @@ const DEFAULT_DATA = {
   customCSS: "",
   customJS: "",
   items: {
-    "i_demo1": { title: "Google", url: "https://www.google.com", desc: "全球最大搜索引擎，提供强大的搜索功能，覆盖网页,图片,新闻等海量信息。", icon: "", isPrivate: false },
+    "i_demo1": { title: "Google", url: "https://www.google.com", desc: "全球最大搜索引擎，提供强大的搜索功能，覆盖网页、图片、新闻等海量信息。", icon: "", isPrivate: false },
     "i_demo2": { title: "GitHub", url: "https://github.com", desc: "全球最大的代码托管平台，开发者首选，拥有海量开源项目。", icon: "", isPrivate: false },
     "i_demo3": { title: "NAS管理", url: "http://192.168.1.1", desc: "仅管理员可见的内部链接", icon: "fas fa-hdd", isPrivate: true }
   },
@@ -32,7 +34,7 @@ const DEFAULT_DATA = {
 
 const I18N_MESSAGES = {
   zh: {
-    search_placeholder: "搜索...",
+    search_placeholder: "搜索... (按 / 聚焦)",
     search_result: "搜索结果",
     items_count: "个",
     no_content: "暂无内容",
@@ -119,7 +121,7 @@ const I18N_MESSAGES = {
     tab_advanced: "高级设置"
   },
   en: {
-    search_placeholder: "Search...",
+    search_placeholder: "Search... (Press /)",
     search_result: "Search Results",
     items_count: "items",
     no_content: "No Content",
@@ -322,20 +324,55 @@ function getPublicPage() {
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script>tailwind.config={darkMode:'class',theme:{extend:{colors:{primary:'#3b82f6'}}}}</script>
 <style>
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; overflow-x: hidden;}
 .glass{background:rgba(255,255,255,0.7);backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid rgba(255,255,255,0.3)}
 .dark .glass{background:rgba(15,23,42,0.7);border-bottom:1px solid rgba(255,255,255,0.05)}
+
+/* ✨ V22 高级卡片流光与悬停效果 */
 .card-glass{
-    background:rgba(255,255,255,0.7); 
+    background:rgba(255,255,255,0.75); 
     backdrop-filter:blur(16px) saturate(180%);
     border:1px solid rgba(255,255,255,0.6);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .dark .card-glass{
-    background:rgba(30,41,59,0.5);
-    border:1px solid rgba(255,255,255,0.05);
-    box-shadow:0 4px 6px -1px rgba(0,0,0,0.3);
+    background:rgba(30,41,59,0.55);
+    border:1px solid rgba(255,255,255,0.06);
+    box-shadow:0 4px 6px -1px rgba(0,0,0,0.2);
 }
+.card-glass:hover {
+    border-color: rgba(249, 115, 22, 0.5);
+    box-shadow: 0 12px 24px -6px rgba(249, 115, 22, 0.15), 0 0 0 1px rgba(249, 115, 22, 0.2);
+}
+
+/* ✨ V22 背景动态微光（Blob Animation） */
+.ambient-blob {
+    position: fixed;
+    width: 500px;
+    height: 500px;
+    border-radius: 50%;
+    filter: blur(80px);
+    z-index: -1;
+    opacity: 0.15;
+    pointer-events: none;
+    animation: blobFloat 12s ease-in-out infinite alternate;
+}
+.dark .ambient-blob { opacity: 0.25; filter: blur(100px); }
+@keyframes blobFloat {
+    0% { transform: translate(-50px, -50px) scale(1); }
+    100% { transform: translate(100px, 80px) scale(1.15); }
+}
+
+/* ✨ V22 内容丝滑淡入动效 */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+    animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 .dropdown-menu{opacity:0;visibility:hidden;transform:translateY(10px);transition:all 0.2s cubic-bezier(0.16,1,0.3,1);pointer-events:none}
 .group:hover .dropdown-menu{opacity:1;visibility:visible;transform:translateY(0);pointer-events:auto}
 .scrollbar-none::-webkit-scrollbar {display: none;}
@@ -389,6 +426,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 </style>
 </head>
 <body class="text-slate-700 dark:text-slate-200 min-h-screen flex flex-col transition-colors duration-500 bg-fixed bg-gradient-to-b from-[#f8fafc] via-[#eff6ff] to-[#e2e8f0] dark:from-[#0f172a] dark:via-[#1e293b] dark:to-[#0b1120]">
+
+<!-- 背景立体光斑 -->
+<div class="ambient-blob bg-blue-400 top-[-10%] left-[-10%]"></div>
+<div class="ambient-blob bg-orange-400 bottom-[-10%] right-[-10%]" style="animation-delay: -6s;"></div>
+
 <div id="error-display"></div>
 
 <div id="splash-screen">
@@ -422,7 +464,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 <div id="app" class="flex-1 flex flex-col">
   <header class="fixed top-0 inset-x-0 h-16 glass z-50 transition-all duration-300">
     <div class="container mx-auto px-4 h-full flex items-center justify-between">
-      <!-- 可点击返回初始页的 Logo 与标题 -->
       <div @click="resetToHome" class="flex items-center gap-3 shrink-0 mr-4 cursor-pointer group" title="返回首页">
         <div v-if="isImageUrl(db.logo)" class="w-8 h-8 rounded overflow-hidden shadow-sm group-hover:scale-105 transition-transform"><img :src="db.logo" class="w-full h-full object-cover"></div>
         <div v-else class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 group-hover:scale-105 transition-transform"><i :class="db.logo||'fas fa-compass'"></i></div>
@@ -447,9 +488,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
       </nav>
 
       <div class="flex-1 flex justify-end md:flex-none items-center gap-4">
-        <div class="relative group w-full max-w-[120px] md:max-w-[160px] transition-all focus-within:max-w-[200px]">
+        <div class="relative group w-full max-w-[140px] md:max-w-[180px] transition-all focus-within:max-w-[220px]">
           <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-          <input v-model="searchQuery" type="text" :placeholder="t('search_placeholder')" class="w-full bg-white/50 dark:bg-slate-800/50 border border-transparent focus:border-blue-400 focus:bg-white dark:focus:bg-slate-800 rounded-full py-1.5 pl-9 pr-4 text-sm outline-none transition-all shadow-sm focus:shadow-md">
+          <!-- 绑定 ref 以便快捷键聚焦 -->
+          <input ref="searchInputRef" v-model="searchQuery" type="text" :placeholder="t('search_placeholder')" class="w-full bg-white/50 dark:bg-slate-800/50 border border-transparent focus:border-orange-400 focus:bg-white dark:focus:bg-slate-800 rounded-full py-1.5 pl-9 pr-8 text-sm outline-none transition-all shadow-sm focus:shadow-md">
+          <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200/60 dark:bg-slate-700 text-slate-400 pointer-events-none hidden sm:inline-block">/</span>
         </div>
         <div class="flex items-center gap-2 shrink-0">
           <a v-if="db.githubUrl" :href="db.githubUrl" target="_blank" title="GitHub Project" class="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-white/50 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 rounded-full transition-all"><i class="fab fa-github text-lg"></i></a>
@@ -489,12 +532,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
     </div>
   </transition>
 
-  <main class="flex-1 container mx-auto px-4 pt-28 pb-8 max-w-7xl flex flex-col">
-    <div v-if="loading" class="flex justify-center mt-20"><div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div></div>
-    <div v-else class="animate-fade-in-up flex-1 flex flex-col">
-      <div v-if="isSearching" class="mb-6 flex items-center gap-2 text-lg font-bold text-slate-700 dark:text-slate-200"><i class="fas fa-search text-blue-500"></i><span>{{ t('search_result') }}: "{{searchQuery}}"</span><span class="text-sm font-normal text-slate-400 ml-2">({{displayedItems.length}} {{ t('items_count') }})</span></div>
+  <!-- 引入淡入动效容器 -->
+  <main class="flex-1 container mx-auto px-4 pt-28 pb-8 max-w-7xl flex flex-col animate-fade-in" :key="activeCatIdx + '-' + activeSubIdx + '-' + isSearching">
+    <div v-if="loading" class="flex justify-center mt-20"><div class="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500"></div></div>
+    <div v-else class="flex-1 flex flex-col">
+      <div v-if="isSearching" class="mb-6 flex items-center gap-2 text-lg font-bold text-slate-700 dark:text-slate-200"><i class="fas fa-search text-orange-500"></i><span>{{ t('search_result') }}: "{{searchQuery}}"</span><span class="text-sm font-normal text-slate-400 ml-2">({{displayedItems.length}} {{ t('items_count') }})</span></div>
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 mb-8">
-        <a v-for="item in displayedItems" :key="item.id" :href="item.url" target="_blank" class="group card-glass p-3 rounded-xl shadow-md ring-1 ring-black/5 dark:ring-white/10 hover:shadow-xl hover:shadow-orange-500/30 hover:ring-orange-500/60 hover:-translate-y-1 transition-all duration-300 flex flex-col relative overflow-hidden h-24">
+        <a v-for="item in displayedItems" :key="item.id" :href="item.url" target="_blank" class="group card-glass p-3 rounded-xl hover:-translate-y-1 transition-all duration-300 flex flex-col relative overflow-hidden h-24">
           <div class="flex flex-col items-center justify-center h-full transition-opacity duration-300 group-hover:opacity-10">
              <div class="relative mb-2">
                <div class="w-8 h-8 rounded-lg bg-white/50 dark:bg-slate-700/50 p-1.5 flex items-center justify-center shadow-sm">
@@ -509,16 +553,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
              <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium overflow-y-auto max-h-full scrollbar-none text-center">{{item.desc|| t('no_content') }}</p>
           </div>
           
-          <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0 z-20"><i class="fas fa-external-link-alt text-xs text-blue-400"></i></div>
+          <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0 z-20"><i class="fas fa-external-link-alt text-xs text-orange-400"></i></div>
         </a>
       </div>
       <div v-if="displayedItems.length===0" class="flex flex-col items-center justify-center py-20 text-slate-400 flex-1"><div class="w-16 h-16 bg-white/50 dark:bg-slate-800/50 rounded-full flex items-center justify-center text-2xl mb-4 shadow-sm"><i class="fas fa-box-open text-slate-300"></i></div><p class="text-sm">{{ t('no_content') }}</p></div>
       
       <div v-if="displayedItems.length > 0 && !isSearching" class="mt-auto pt-6 flex justify-end">
         <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border border-white/20 dark:border-white/5 shadow-sm transition-all hover:shadow-md">
-          <div class="flex items-center justify-center w-6 h-6 rounded-full bg-blue-500 text-white shadow-sm text-xs"><i class="fas fa-map-marker-alt"></i></div>
+          <div class="flex items-center justify-center w-6 h-6 rounded-full bg-orange-500 text-white shadow-sm text-xs"><i class="fas fa-map-marker-alt"></i></div>
           <span class="text-sm font-bold text-slate-700 dark:text-slate-200">{{currentCatName}}</span>
-          <template v-if="currentSubName"><i class="fas fa-chevron-right text-xs text-blue-300 dark:text-slate-500"></i><span class="text-sm font-bold text-indigo-600 dark:text-indigo-400">{{currentSubName}}</span></template>
+          <template v-if="currentSubName"><i class="fas fa-chevron-right text-xs text-orange-300 dark:text-slate-500"></i><span class="text-sm font-bold text-amber-600 dark:text-amber-400">{{currentSubName}}</span></template>
           <span class="ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/50 dark:bg-black/20 text-slate-500 dark:text-slate-400 border border-black/5 dark:border-white/5">{{displayedItems.length}}</span>
         </div>
       </div>
@@ -526,7 +570,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
   </main>
   <footer class="bg-slate-200/50 dark:bg-slate-900/50 backdrop-blur-md border-t border-white/20 dark:border-white/5 mt-8 py-6">
     <div class="container mx-auto px-4 flex flex-wrap justify-center items-center gap-x-6 gap-y-2 text-xs text-slate-500 dark:text-slate-400">
-      <div class="flex items-center gap-1 cursor-default group"><span>&copy; {{new Date().getFullYear()}}</span><span class="font-bold transition-all duration-300 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-blue-500 group-hover:to-purple-600">{{db.title}}</span></div>
+      <div class="flex items-center gap-1 cursor-default group"><span>&copy; {{new Date().getFullYear()}}</span><span class="font-bold transition-all duration-300 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-orange-500 group-hover:to-amber-500">{{db.title}}</span></div>
       <span class="hidden sm:inline-block opacity-30">|</span>
       <div class="flex items-center gap-2 cursor-default"><span>{{ t('powered_by') }}</span><a href="https://workers.cloudflare.com/" target="_blank" class="opacity-80 hover:opacity-100 transition-opacity"><img src="https://img.shields.io/badge/Cloudflare-Workers-orange?logo=cloudflare" alt="Cloudflare Workers" class="h-4"></a></div>
     </div>
@@ -554,7 +598,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
       MESSAGES = JSON.parse(document.getElementById('i18n-data').textContent);
   } catch(e) { console.error("I18N Data Parse Error", e); }
 
-  const { createApp, ref, computed, onMounted } = Vue;
+  const { createApp, ref, computed, onMounted, onUnmounted } = Vue;
   createApp({
     setup() {
       const db = ref({ title:'', items: {}, categories: [], githubUrl: '', adminIcon: '', customCSS: '', customJS: '' });
@@ -562,6 +606,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
       const activeCatIdx = ref(0);
       const activeSubIdx = ref(-1);
       const searchQuery = ref("");
+      const searchInputRef = ref(null);
       const isDark = ref(localStorage.theme === 'dark');
       const mobileMenuOpen = ref(false);
       const token = localStorage.getItem('nav_token');
@@ -573,7 +618,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
       };
       const toggleLang = () => { lang.value = lang.value === 'zh' ? 'en' : 'zh'; localStorage.setItem('nav_lang', lang.value); };
 
+      // 键盘快捷键监听：按下 '/' 或 'Ctrl + K' 聚焦搜索框
+      const handleKeyDown = (e) => {
+          if ((e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') || 
+              ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k')) {
+              e.preventDefault();
+              if (searchInputRef.value) {
+                  searchInputRef.value.focus();
+              }
+          }
+      };
+
       onMounted(async () => {
+        window.addEventListener('keydown', handleKeyDown);
         if(isDark.value) document.documentElement.classList.add('dark');
         try {
             const headers = token ? { 'Authorization': 'Bearer ' + token } : {};
@@ -596,6 +653,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
         }
       });
 
+      onUnmounted(() => {
+          window.removeEventListener('keydown', handleKeyDown);
+      });
+
       const updateMeta = () => { if(db.value.title) { document.title = db.value.title; const stTitle = document.getElementById('splash-title'); if(stTitle) stTitle.innerText = db.value.title; } if(db.value.favicon) { let link = document.querySelector("link[rel~='icon']"); if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); } link.href = db.value.favicon; } };
       const injectCustomCode = () => { if (db.value.customCSS) { const style = document.createElement('style'); style.innerHTML = db.value.customCSS; document.head.appendChild(style); } if (db.value.customJS) { const script = document.createElement('script'); script.innerHTML = db.value.customJS; document.body.appendChild(script); } };
       const isImageUrl = (str) => str && (str.startsWith('http') || str.startsWith('/')) && !str.includes(' ');
@@ -612,13 +673,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
       const selectCategory = (i) => { activeCatIdx.value=i; activeSubIdx.value=-1; searchQuery.value=""; window.scrollTo({top:0, behavior:'smooth'}); };
       const selectSubCategory = (c, s) => { activeCatIdx.value=c; activeSubIdx.value=s; searchQuery.value=""; window.scrollTo({top:0, behavior:'smooth'}); };
       
-      // 返回首页（重置分类并清空搜索）
       const resetToHome = () => { activeCatIdx.value = 0; activeSubIdx.value = -1; searchQuery.value = ""; window.scrollTo({top:0, behavior:'smooth'}); };
 
       const toggleTheme = () => { isDark.value=!isDark.value; localStorage.theme=isDark.value?'dark':'light'; document.documentElement.classList.toggle('dark', isDark.value); };
       const getFav = (u) => { try { return 'https://favicon.im/' + new URL(u).hostname; } catch { return ''; } };
       const defIcon = (e) => e.target.src = 'https://ui-avatars.com/api/?background=random&color=fff&name=Nav';
-      return { db, loading, activeCatIdx, activeSubIdx, isDark, mobileMenuOpen, searchQuery, isSearching, displayedItems, currentCatName, currentSubName, selectCategory, selectSubCategory, resetToHome, toggleTheme, getFav, defIcon, isImageUrl, t, toggleLang };
+      return { db, loading, activeCatIdx, activeSubIdx, isDark, mobileMenuOpen, searchQuery, searchInputRef, isSearching, displayedItems, currentCatName, currentSubName, selectCategory, selectSubCategory, resetToHome, toggleTheme, getFav, defIcon, isImageUrl, t, toggleLang };
     }
   }).mount('#app');
 </script>
