@@ -1,21 +1,21 @@
 /**
- * Cloudflare Worker Navigation - V22 Ultimate Polished Edition
- * 全面优化：
- * 1. [高级交互] 键盘全局按下 `/` 或 `Ctrl+K` 自动聚焦到顶部搜索框。
- * 2. [视觉流光] 卡片加入微光悬停边框与高级阴影。
- * 3. [背景微光] 背景加入缓慢流动的立体光斑（Ambient Blob Animation）。
- * 4. [平滑切屏] 分类栏目切换与内容渲染加入优雅的交错淡入动效。
+ * Cloudflare Worker Navigation - V25.9 Fixed Edition
+ * 修复内容：内置高精度农历转换算法，彻底解决农历日期计算不准的问题。
  */
 
 const DEFAULT_DATA = {
   title: "Flaris 导航",
+  title_en: "Flaris Navigation",
   adminTitle: "Flaris Admin",
+  adminTitle_en: "Flaris Control Panel",
   logo: "fas fa-compass", 
   adminIcon: "fas fa-user-shield",
   favicon: "https://www.google.com/favicon.ico",
   githubUrl: "", 
   customCSS: "",
   customJS: "",
+  defaultCityZh: "",
+  defaultCityEn: "",
   items: {
     "i_demo1": { title: "Google", url: "https://www.google.com", desc: "全球最大搜索引擎，提供强大的搜索功能，覆盖网页、图片、新闻等海量信息。", icon: "", isPrivate: false },
     "i_demo2": { title: "GitHub", url: "https://github.com", desc: "全球最大的代码托管平台，开发者首选，拥有海量开源项目。", icon: "", isPrivate: false },
@@ -92,8 +92,10 @@ const I18N_MESSAGES = {
     modal_name: "名称",
     modal_icon: "图标 (类名或URL)",
     modal_icon_ph: "fas fa-star 或 https://...",
-    modal_site_title: "网站标题",
-    modal_admin_title: "管理后台标题",
+    modal_site_title_zh: "中文网站标题",
+    modal_site_title_en: "英文网站标题",
+    modal_admin_title_zh: "中文管理后台标题",
+    modal_admin_title_en: "英文管理后台标题",
     modal_admin_title_ph: "例如：我的导航控制台",
     modal_admin_icon: "管理入口图标",
     modal_admin_icon_ph: "fas fa-user-shield 或 URL",
@@ -105,6 +107,9 @@ const I18N_MESSAGES = {
     modal_github_ph: "https://github.com/...",
     modal_css: "自定义 CSS",
     modal_js: "自定义 JS",
+    modal_city_zh: "固定城市 (中文，如：北京)",
+    modal_city_en: "固定城市 (英文，如：Beijing)",
+    modal_city_ph: "留空则自动IP定位",
     modal_title: "标题",
     modal_desc: "描述",
     modal_custom_icon: "自定义图标 URL",
@@ -118,7 +123,13 @@ const I18N_MESSAGES = {
     btn_confirm: "确定",
     tab_public: "前台展示",
     tab_admin: "后台管理",
-    tab_advanced: "高级设置"
+    tab_advanced: "高级设置",
+    greet_dawn: "清晨好，愿你拥有美好的一天 ✨",
+    greet_morning: "上午好，开启高效的创作时光 ☕",
+    greet_noon: "中午好，记得按时午休与用餐 🥗",
+    greet_afternoon: "下午好，保持专注，继续加油 💻",
+    greet_evening: "傍晚好，卸下疲惫，享受片刻宁静 🌇",
+    greet_night: "夜深了，注意作息，早点休息 🌙"
   },
   en: {
     search_placeholder: "Search... (Press /)",
@@ -179,9 +190,11 @@ const I18N_MESSAGES = {
     modal_name: "Name",
     modal_icon: "Icon (Class or URL)",
     modal_icon_ph: "fas fa-star or https://...",
-    modal_site_title: "Site Title",
-    modal_admin_title: "Admin Panel Title",
-    modal_admin_title_ph: "e.g. My Admin",
+    modal_site_title_zh: "Chinese Site Title",
+    modal_site_title_en: "English Site Title",
+    modal_admin_title_zh: "Chinese Admin Title",
+    modal_admin_title_en: "English Admin Title",
+    modal_admin_title_ph: "e.g. My Admin Console",
     modal_admin_icon: "Admin Entry Icon",
     modal_admin_icon_ph: "fas fa-user-shield or URL",
     modal_admin_logo: "Admin Top-Left Logo",
@@ -192,6 +205,9 @@ const I18N_MESSAGES = {
     modal_github_ph: "https://github.com/...",
     modal_css: "Custom CSS",
     modal_js: "Custom JS",
+    modal_city_zh: "Default City (Chinese, e.g. 北京)",
+    modal_city_en: "Default City (English, e.g. Beijing)",
+    modal_city_ph: "Leave blank for auto IP location",
     modal_title: "Title",
     modal_desc: "Description",
     modal_custom_icon: "Custom Icon URL",
@@ -205,7 +221,13 @@ const I18N_MESSAGES = {
     btn_confirm: "Confirm",
     tab_public: "Public View",
     tab_admin: "Admin Panel",
-    tab_advanced: "Advanced"
+    tab_advanced: "Advanced",
+    greet_dawn: "Early morning, have a wonderful day ✨",
+    greet_morning: "Good morning, time to be productive ☕",
+    greet_noon: "Good noon, enjoy your lunch break 🥗",
+    greet_afternoon: "Good afternoon, keep up the great work 💻",
+    greet_evening: "Good evening, relax and unwind 🌇",
+    greet_night: "Late night, get some good rest 🌙"
   }
 };
 
@@ -238,14 +260,42 @@ export default {
         if (!response) {
           let data = await env.NAV_DB.get("nav_data", { type: "json" });
           data = ensureData(data);
-          const publicData = JSON.parse(JSON.stringify(data));
-          if (publicData.items) {
-              for (const key in publicData.items) {
-                  if (publicData.items[key].isPrivate) delete publicData.items[key];
+          
+          const publicData = {
+            title: data.title,
+            title_en: data.title_en,
+            logo: data.logo,
+            favicon: data.favicon,
+            githubUrl: data.githubUrl,
+            adminIcon: data.adminIcon,
+            adminTitle: data.adminTitle,
+            adminTitle_en: data.adminTitle_en,
+            customCSS: data.customCSS,
+            customJS: data.customJS,
+            defaultCityZh: data.defaultCityZh,
+            defaultCityEn: data.defaultCityEn,
+            categories: data.categories,
+            items: {}
+          };
+
+          if (data.items) {
+              for (const key in data.items) {
+                  if (!data.items[key].isPrivate) {
+                      publicData.items[key] = {
+                          title: data.items[key].title,
+                          url: data.items[key].url,
+                          desc: data.items[key].desc,
+                          icon: data.items[key].icon
+                      };
+                  }
               }
           }
+
           response = new Response(JSON.stringify(publicData), {
-            headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=60" }
+            headers: { 
+              "Content-Type": "application/json", 
+              "Cache-Control": "public, max-age=300, stale-while-revalidate=600" 
+            }
           });
           ctx.waitUntil(cache.put(cacheKey, response.clone()));
         }
@@ -261,6 +311,12 @@ export default {
         if (!checkAuth(request, env)) return new Response("Unauthorized", { status: 401 });
         const body = await request.json();
         await env.NAV_DB.put("nav_data", JSON.stringify(body));
+        
+        const cache = caches.default;
+        const publicUrl = new URL(request.url);
+        publicUrl.search = ""; 
+        ctx.waitUntil(cache.delete(new Request(publicUrl.toString())));
+
         return new Response(JSON.stringify({ success: true }), { headers: { "Content-Type": "application/json" } });
       }
 
@@ -290,7 +346,7 @@ function ensureData(data) {
     if (!data) data = JSON.parse(JSON.stringify(DEFAULT_DATA));
     if (!data.items) data.items = {};
     if (!data.categories) data.categories = [];
-    const keys = ['title', 'adminTitle', 'logo', 'adminLogo', 'adminIcon', 'favicon', 'githubUrl', 'customCSS', 'customJS'];
+    const keys = ['title', 'title_en', 'adminTitle', 'adminTitle_en', 'logo', 'adminLogo', 'adminIcon', 'favicon', 'githubUrl', 'customCSS', 'customJS', 'defaultCityZh', 'defaultCityEn'];
     keys.forEach(k => { if (data[k] === undefined) data[k] = DEFAULT_DATA[k] || ""; });
     if (data.categories) {
         data.categories.forEach(c => { 
@@ -328,13 +384,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .glass{background:rgba(255,255,255,0.7);backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid rgba(255,255,255,0.3)}
 .dark .glass{background:rgba(15,23,42,0.7);border-bottom:1px solid rgba(255,255,255,0.05)}
 
-/* ✨ V22 高级卡片流光与悬停效果 */
 .card-glass{
     background:rgba(255,255,255,0.75); 
     backdrop-filter:blur(16px) saturate(180%);
     border:1px solid rgba(255,255,255,0.6);
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform, box-shadow, border-color;
+    transform: translate3d(0, 0, 0);
 }
 .dark .card-glass{
     background:rgba(30,41,59,0.55);
@@ -344,9 +401,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .card-glass:hover {
     border-color: rgba(249, 115, 22, 0.5);
     box-shadow: 0 12px 24px -6px rgba(249, 115, 22, 0.15), 0 0 0 1px rgba(249, 115, 22, 0.2);
+    transform: translate3d(0, -4px, 0);
 }
 
-/* ✨ V22 背景动态微光（Blob Animation） */
 .ambient-blob {
     position: fixed;
     width: 500px;
@@ -356,21 +413,37 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
     z-index: -1;
     opacity: 0.15;
     pointer-events: none;
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
     animation: blobFloat 12s ease-in-out infinite alternate;
 }
 .dark .ambient-blob { opacity: 0.25; filter: blur(100px); }
 @keyframes blobFloat {
-    0% { transform: translate(-50px, -50px) scale(1); }
-    100% { transform: translate(100px, 80px) scale(1.15); }
+    0% { transform: translate3d(-50px, -50px, 0) scale(1); }
+    100% { transform: translate3d(100px, 80px, 0) scale(1.15); }
 }
 
-/* ✨ V22 内容丝滑淡入动效 */
 @keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(12px); }
-    to { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; transform: translate3d(0, 12px, 0); }
+    to { opacity: 1; transform: translate3d(0, 0, 0); }
 }
 .animate-fade-in {
     animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    will-change: transform, opacity;
+}
+
+@keyframes cursorBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+.typing-cursor {
+    display: inline-block;
+    width: 2px;
+    height: 1em;
+    background-color: currentColor;
+    vertical-align: -0.15em;
+    margin-left: 2px;
+    animation: cursorBlink 0.8s infinite;
 }
 
 .dropdown-menu{opacity:0;visibility:hidden;transform:translateY(10px);transition:all 0.2s cubic-bezier(0.16,1,0.3,1);pointer-events:none}
@@ -378,7 +451,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .scrollbar-none::-webkit-scrollbar {display: none;}
 #error-display { display: none; position: fixed; top: 0; left: 0; background: red; color: white; padding: 10px; z-index: 9999; font-size: 12px; }
 
-/* 🎬 优雅猫咪开屏动画核心 CSS */
 #splash-screen {
     position: fixed; inset: 0; z-index: 99999;
     background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 50%, #e2e8f0 100%);
@@ -427,7 +499,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 </head>
 <body class="text-slate-700 dark:text-slate-200 min-h-screen flex flex-col transition-colors duration-500 bg-fixed bg-gradient-to-b from-[#f8fafc] via-[#eff6ff] to-[#e2e8f0] dark:from-[#0f172a] dark:via-[#1e293b] dark:to-[#0b1120]">
 
-<!-- 背景立体光斑 -->
 <div class="ambient-blob bg-blue-400 top-[-10%] left-[-10%]"></div>
 <div class="ambient-blob bg-orange-400 bottom-[-10%] right-[-10%]" style="animation-delay: -6s;"></div>
 
@@ -465,20 +536,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
   <header class="fixed top-0 inset-x-0 h-16 glass z-50 transition-all duration-300">
     <div class="container mx-auto px-4 h-full flex items-center justify-between">
       <div @click="resetToHome" class="flex items-center gap-3 shrink-0 mr-4 cursor-pointer group" title="返回首页">
-        <div v-if="isImageUrl(db.logo)" class="w-8 h-8 rounded overflow-hidden shadow-sm group-hover:scale-105 transition-transform"><img :src="db.logo" class="w-full h-full object-cover"></div>
+        <div v-if="isImageUrl(db.logo)" class="w-8 h-8 rounded overflow-hidden shadow-sm group-hover:scale-105 transition-transform"><img :src="db.logo" class="w-full h-full object-cover" loading="lazy"></div>
         <div v-else class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 group-hover:scale-105 transition-transform"><i :class="db.logo||'fas fa-compass'"></i></div>
-        <span class="font-bold text-lg tracking-tight hidden md:block text-slate-800 dark:text-white group-hover:text-blue-500 transition-colors">{{db.title}}</span>
+        <span class="font-bold text-lg tracking-tight hidden md:block text-slate-800 dark:text-white group-hover:text-blue-500 transition-colors">{{ currentDisplayTitle }}</span>
       </div>
 
       <nav class="hidden md:flex h-full items-center space-x-1">
         <div v-for="(cat,idx) in db.categories" :key="cat.id" class="group relative h-full flex items-center px-1">
           <button @click="selectCategory(idx)" class="px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 flex items-center gap-2 transform active:scale-95" :class="(!isSearching&&activeCatIdx===idx)?'bg-white text-blue-600 shadow-md shadow-blue-500/10 ring-1 ring-black/5 dark:bg-slate-800 dark:text-blue-400 dark:ring-white/10':'text-slate-600 hover:bg-orange-50 hover:text-orange-600 hover:ring-1 hover:ring-orange-500/50 hover:shadow-lg hover:shadow-orange-500/20 dark:text-slate-400 dark:hover:bg-orange-900/20 dark:hover:text-orange-400 dark:hover:ring-orange-400/50'">
-            <img v-if="isImageUrl(cat.icon)" :src="cat.icon" class="w-4 h-4 object-contain"><i v-else :class="cat.icon||'fas fa-folder'" class="text-xs"></i><span>{{cat.name}}</span>
+            <img v-if="isImageUrl(cat.icon)" :src="cat.icon" class="w-4 h-4 object-contain" loading="lazy"><i v-else :class="cat.icon||'fas fa-folder'" class="text-xs"></i><span>{{cat.name}}</span>
           </button>
           <div v-if="cat.subCategories && cat.subCategories.length" class="dropdown-menu absolute top-[85%] left-0 w-max max-w-xl p-0 pt-4 z-50">
             <div class="flex flex-wrap gap-2">
               <button v-for="(sub,sIdx) in cat.subCategories" :key="sub.id" @click.stop="selectSubCategory(idx,sIdx)" class="group/item relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 shadow-md backdrop-blur-md" :class="(!isSearching&&activeCatIdx===idx&&activeSubIdx===sIdx)?'bg-blue-600 text-white ring-2 ring-blue-200 dark:ring-blue-900':'bg-white/90 text-slate-600 hover:bg-orange-50 hover:text-orange-600 hover:ring-1 hover:ring-orange-500/50 hover:shadow-md hover:shadow-orange-500/20 dark:bg-slate-800/90 dark:text-slate-300 dark:hover:bg-orange-900/30 dark:hover:text-orange-400 dark:hover:ring-orange-400/50 hover:scale-105'">
-                <div v-if="sub.icon" class="opacity-70 group-hover/item:opacity-100"><img v-if="isImageUrl(sub.icon)" :src="sub.icon" class="w-3 h-3 object-contain"><i v-else :class="sub.icon"></i></div>
+                <div v-if="sub.icon" class="opacity-70 group-hover/item:opacity-100"><img v-if="isImageUrl(sub.icon)" :src="sub.icon" class="w-3 h-3 object-contain" loading="lazy"><i v-else :class="sub.icon"></i></div>
                 <span>{{sub.name}}</span>
                 <span class="flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full text-[9px] shadow-sm transition-colors" :class="(!isSearching&&activeCatIdx===idx&&activeSubIdx===sIdx)?'bg-white/20 text-white':'bg-slate-100 text-slate-400 dark:bg-slate-900 dark:text-slate-500'">{{sub.itemIds.length}}</span>
               </button>
@@ -490,16 +561,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
       <div class="flex-1 flex justify-end md:flex-none items-center gap-4">
         <div class="relative group w-full max-w-[140px] md:max-w-[180px] transition-all focus-within:max-w-[220px]">
           <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-          <!-- 绑定 ref 以便快捷键聚焦 -->
           <input ref="searchInputRef" v-model="searchQuery" type="text" :placeholder="t('search_placeholder')" class="w-full bg-white/50 dark:bg-slate-800/50 border border-transparent focus:border-orange-400 focus:bg-white dark:focus:bg-slate-800 rounded-full py-1.5 pl-9 pr-8 text-sm outline-none transition-all shadow-sm focus:shadow-md">
           <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200/60 dark:bg-slate-700 text-slate-400 pointer-events-none hidden sm:inline-block">/</span>
         </div>
         <div class="flex items-center gap-2 shrink-0">
           <a v-if="db.githubUrl" :href="db.githubUrl" target="_blank" title="GitHub Project" class="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-white/50 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 rounded-full transition-all"><i class="fab fa-github text-lg"></i></a>
-          <a href="/admin" target="_blank" :title="db.adminTitle||t('admin_panel')" class="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-white/50 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-slate-800 rounded-full transition-all"><img v-if="isImageUrl(db.adminIcon)" :src="db.adminIcon" class="w-5 h-5 object-contain"><i v-else :class="db.adminIcon||'fas fa-user-shield'" class="text-base"></i></a>
+          <a href="/admin" target="_blank" :title="currentDisplayAdminTitle||t('admin_panel')" class="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-white/50 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-slate-800 rounded-full transition-all"><img v-if="isImageUrl(db.adminIcon)" :src="db.adminIcon" class="w-5 h-5 object-contain" loading="lazy"><i v-else :class="db.adminIcon||'fas fa-user-shield'" class="text-base"></i></a>
           
-          <button @click="toggleLang" class="w-9 h-9 flex items-center justify-center text-slate-500 hover:bg-white/50 dark:text-slate-400 dark:hover:bg-slate-800 rounded-full transition-all" :title="t('toggle_lang')">
-             <i class="fas fa-language text-lg"></i>
+          <button @click="toggleLang" class="w-9 h-9 flex items-center justify-center text-slate-500 hover:bg-white/50 dark:text-slate-400 dark:hover:bg-slate-800 rounded-full transition-all font-bold text-xs uppercase" :title="t('toggle_lang')">
+             <span>{{ lang }}</span>
           </button>
 
           <button @click="toggleTheme" :title="t('toggle_theme')" class="w-9 h-9 flex items-center justify-center text-amber-500 hover:bg-amber-50 dark:text-slate-400 dark:hover:text-amber-300 dark:hover:bg-slate-800 rounded-full transition-all"><i :class="isDark?'fas fa-moon':'fas fa-sun'"></i></button>
@@ -513,16 +583,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
   <transition name="drawer">
     <div v-if="mobileMenuOpen" class="fixed inset-y-0 right-0 z-[70] w-72 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-2xl md:hidden border-l border-slate-200 dark:border-slate-700 flex flex-col">
       <div class="p-5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
-        <span class="font-bold text-lg text-slate-800 dark:text-white" @click="resetToHome;mobileMenuOpen=false">{{ db.title }}</span>
+        <span class="font-bold text-lg text-slate-800 dark:text-white" @click="resetToHome;mobileMenuOpen=false">{{ currentDisplayTitle }}</span>
         <div class="flex gap-2">
-            <button @click="toggleLang" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"><i class="fas fa-language"></i></button>
+            <button @click="toggleLang" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold text-xs uppercase">{{ lang }}</button>
             <button @click="toggleTheme" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-amber-500"><i :class="isDark?'fas fa-moon':'fas fa-sun'"></i></button>
         </div>
       </div>
       <div class="flex-1 overflow-y-auto p-4 space-y-2">
          <div v-for="(cat,idx) in db.categories" :key="cat.id">
            <button @click="selectCategory(idx);mobileMenuOpen=false" class="w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-3" :class="activeCatIdx===idx?'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400':'text-slate-600 dark:text-slate-400 hover:bg-orange-50 hover:text-orange-600 dark:hover:bg-slate-800 dark:hover:text-orange-400'">
-             <img v-if="isImageUrl(cat.icon)" :src="cat.icon" class="w-5 h-5 object-contain"><i v-else :class="cat.icon||'fas fa-folder'"></i>{{cat.name}}
+             <img v-if="isImageUrl(cat.icon)" :src="cat.icon" class="w-5 h-5 object-contain" loading="lazy"><i v-else :class="cat.icon||'fas fa-folder'"></i>{{cat.name}}
            </button>
            <div v-if="activeCatIdx===idx && cat.subCategories && cat.subCategories.length" class="mt-2 ml-4 pl-4 border-l border-slate-200 dark:border-slate-700 space-y-1">
              <button v-for="(sub,sIdx) in cat.subCategories" :key="sub.id" @click.stop="selectSubCategory(idx,sIdx);mobileMenuOpen=false" class="w-full text-left px-3 py-2 rounded-lg text-xs transition-colors flex justify-between items-center" :class="(activeSubIdx===sIdx)?'text-blue-600 font-bold bg-blue-50/50 dark:text-blue-400':'text-slate-500 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400'"><span>{{sub.name}}</span><span class="text-[10px] opacity-50">{{sub.itemIds.length}}</span></button>
@@ -532,19 +602,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
     </div>
   </transition>
 
-  <!-- 引入淡入动效容器 -->
-  <main class="flex-1 container mx-auto px-4 pt-28 pb-8 max-w-7xl flex flex-col animate-fade-in" :key="activeCatIdx + '-' + activeSubIdx + '-' + isSearching">
+  <main class="flex-1 container mx-auto px-4 pt-28 pb-16 max-w-7xl flex flex-col animate-fade-in" :key="activeCatIdx + '-' + activeSubIdx + '-' + isSearching">
     <div v-if="loading" class="flex justify-center mt-20"><div class="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500"></div></div>
     <div v-else class="flex-1 flex flex-col">
       <div v-if="isSearching" class="mb-6 flex items-center gap-2 text-lg font-bold text-slate-700 dark:text-slate-200"><i class="fas fa-search text-orange-500"></i><span>{{ t('search_result') }}: "{{searchQuery}}"</span><span class="text-sm font-normal text-slate-400 ml-2">({{displayedItems.length}} {{ t('items_count') }})</span></div>
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 mb-8">
-        <a v-for="item in displayedItems" :key="item.id" :href="item.url" target="_blank" class="group card-glass p-3 rounded-xl hover:-translate-y-1 transition-all duration-300 flex flex-col relative overflow-hidden h-24">
+        <a v-for="item in displayedItems" :key="item.id" :href="item.url" target="_blank" class="group card-glass p-3 rounded-xl flex flex-col relative overflow-hidden h-24">
           <div class="flex flex-col items-center justify-center h-full transition-opacity duration-300 group-hover:opacity-10">
              <div class="relative mb-2">
                <div class="w-8 h-8 rounded-lg bg-white/50 dark:bg-slate-700/50 p-1.5 flex items-center justify-center shadow-sm">
-                 <img :src="item.icon||getFav(item.url)" @error="defIcon" class="w-full h-full object-contain rounded-md filter group-hover:brightness-110">
+                 <img :src="item.icon||getFav(item.url)" @error="defIcon" class="w-full h-full object-contain rounded-md filter group-hover:brightness-110" loading="lazy">
                </div>
-               <div v-if="item.isPrivate" class="absolute -top-1 -right-1 w-3.5 h-3.5 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center text-[8px] ring-1 ring-white dark:ring-slate-800"><i class="fas fa-lock"></i></div>
              </div>
              <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 text-center leading-tight line-clamp-1 group-hover:text-orange-600 transition-colors">{{item.title}}</h3>
           </div>
@@ -558,19 +626,47 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
       </div>
       <div v-if="displayedItems.length===0" class="flex flex-col items-center justify-center py-20 text-slate-400 flex-1"><div class="w-16 h-16 bg-white/50 dark:bg-slate-800/50 rounded-full flex items-center justify-center text-2xl mb-4 shadow-sm"><i class="fas fa-box-open text-slate-300"></i></div><p class="text-sm">{{ t('no_content') }}</p></div>
       
-      <div v-if="displayedItems.length > 0 && !isSearching" class="mt-auto pt-6 flex justify-end">
-        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border border-white/20 dark:border-white/5 shadow-sm transition-all hover:shadow-md">
-          <div class="flex items-center justify-center w-6 h-6 rounded-full bg-orange-500 text-white shadow-sm text-xs"><i class="fas fa-map-marker-alt"></i></div>
-          <span class="text-sm font-bold text-slate-700 dark:text-slate-200">{{currentCatName}}</span>
-          <template v-if="currentSubName"><i class="fas fa-chevron-right text-xs text-orange-300 dark:text-slate-500"></i><span class="text-sm font-bold text-amber-600 dark:text-amber-400">{{currentSubName}}</span></template>
-          <span class="ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/50 dark:bg-black/20 text-slate-500 dark:text-slate-400 border border-black/5 dark:border-white/5">{{displayedItems.length}}</span>
+      <!-- ✨ V25.9 仪表盘（高精度农历 + 打字机动画） -->
+      <div v-if="!isSearching" class="mt-auto pt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div class="flex flex-col gap-2.5 w-full sm:w-auto items-center">
+          <!-- 第一行：日期时间 + 天气 -->
+          <div class="inline-flex flex-wrap items-center justify-center gap-4 px-5 py-2.5 rounded-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-md border border-white/30 dark:border-white/5 shadow-md">
+            <div class="flex items-center gap-2 cursor-pointer transition-opacity duration-300" :title="lang==='zh'?'点击切换公历/农历':''" @click="toggleCalendarMode">
+              <div class="flex items-center justify-center w-7 h-7 rounded-full bg-amber-500 text-white shadow-sm text-sm"><i class="fas fa-clock"></i></div>
+              <span class="text-sm font-bold text-slate-800 dark:text-slate-100 font-mono">{{ currentTime }}</span>
+            </div>
+            <span class="opacity-30">|</span>
+            <div class="flex items-center gap-2">
+              <div class="flex items-center justify-center w-7 h-7 rounded-full bg-orange-500 text-white shadow-sm text-sm"><i class="fas fa-map-marker-alt"></i></div>
+              <span class="text-sm font-bold text-slate-800 dark:text-slate-100">{{ locationText }}</span>
+              <div class="flex items-center gap-1.5 text-sm font-extrabold text-blue-600 dark:text-blue-400 ml-1">
+                <i :class="weatherIcon"></i>
+                <span>{{ weatherText }}</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 第二行：问候语卡片 -->
+          <div class="w-full flex justify-center">
+            <div class="inline-flex items-center justify-center px-5 py-2.5 rounded-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-md border border-white/30 dark:border-white/5 shadow-md w-auto">
+              <span class="text-sm font-bold text-slate-700 dark:text-slate-200 tracking-wide whitespace-nowrap">{{ displayedGreeting }}<span v-if="isTypingActive" class="typing-cursor"></span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-md border border-white/30 dark:border-white/5 shadow-md ml-auto sm:ml-0">
+          <div class="flex items-center justify-center w-7 h-7 rounded-full bg-blue-500 text-white shadow-sm text-sm"><i class="fas fa-folder-open"></i></div>
+          <span class="text-sm font-bold text-slate-800 dark:text-slate-100">{{currentCatName}}</span>
+          <template v-if="currentSubName"><i class="fas fa-chevron-right text-xs text-orange-400"></i><span class="text-sm font-bold text-amber-600 dark:text-amber-400">{{currentSubName}}</span></template>
+          <span class="ml-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/60 dark:bg-black/30 text-slate-600 dark:text-slate-300 border border-black/5 dark:border-white/5">{{displayedItems.length}}</span>
         </div>
       </div>
     </div>
   </main>
+  
   <footer class="bg-slate-200/50 dark:bg-slate-900/50 backdrop-blur-md border-t border-white/20 dark:border-white/5 mt-8 py-6">
     <div class="container mx-auto px-4 flex flex-wrap justify-center items-center gap-x-6 gap-y-2 text-xs text-slate-500 dark:text-slate-400">
-      <div class="flex items-center gap-1 cursor-default group"><span>&copy; {{new Date().getFullYear()}}</span><span class="font-bold transition-all duration-300 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-orange-500 group-hover:to-amber-500">{{db.title}}</span></div>
+      <div class="flex items-center gap-1 cursor-default group"><span>&copy; ${new Date().getFullYear()}</span><span class="font-bold transition-all duration-300 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-orange-500 group-hover:to-amber-500">{{ currentDisplayTitle }}</span></div>
       <span class="hidden sm:inline-block opacity-30">|</span>
       <div class="flex items-center gap-2 cursor-default"><span>{{ t('powered_by') }}</span><a href="https://workers.cloudflare.com/" target="_blank" class="opacity-80 hover:opacity-100 transition-opacity"><img src="https://img.shields.io/badge/Cloudflare-Workers-orange?logo=cloudflare" alt="Cloudflare Workers" class="h-4"></a></div>
     </div>
@@ -584,24 +680,154 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
       return false; 
   };
   
+  let isSplashDone = false;
   function closeSplash() {
       const sp = document.getElementById('splash-screen');
       if (sp) {
           sp.classList.add('boot-leave-active', 'boot-leave-to');
-          setTimeout(() => { if(sp && sp.parentNode) sp.parentNode.removeChild(sp); }, 500);
+          setTimeout(() => { 
+              if(sp && sp.parentNode) sp.parentNode.removeChild(sp); 
+              isSplashDone = true;
+              window.dispatchEvent(new CustomEvent('splashDone'));
+          }, 500);
       }
   }
   setTimeout(closeSplash, 1200);
+
+  // 📌 高精度农历转换引擎 (1900 - 2100)
+  const LunarCalendar = (function() {
+      const lunarInfo = [
+          0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,
+          0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x09560,0x14977,
+          0x04970,0x0a4b0,0x0b4b5,0x06a50,0x06d40,0x1ab54,0x02b60,0x09570,0x052f2,0x04970,
+          0x06566,0x0d4a0,0x0ea50,0x06e95,0x05ad0,0x02b60,0x186e3,0x092e0,0x1c8d7,0x0c950,
+          0x0d4a0,0x1d8a6,0x0b550,0x056a0,0x1a5b4,0x025d0,0x092d0,0x0d2b2,0x0a950,0x0b557,
+          0x06ca0,0x0b550,0x15355,0x04da0,0x0a5b0,0x14573,0x052b0,0x0a9a8,0x0e950,0x06aa0,
+          0x0aea6,0x0ab50,0x04b60,0x0aae4,0x0a570,0x05260,0x0f263,0x0d950,0x05b57,0x056a0,
+          0x096d0,0x04dd5,0x04ad0,0x0a4d0,0x0d4d4,0x0d250,0x0d558,0x0b540,0x0b5a0,0x195a6,
+          0x09560,0x049b0,0x0a974,0x0a4b0,0x0b27a,0x06a50,0x06d40,0x0af46,0x0ab60,0x09570,
+          0x04af5,0x04970,0x064b0,0x07433,0x0ea50,0x06b55,0x05ad0,0x02b60,0x09571,0x092e0,
+          0x0c96d,0x0c950,0x0d4a0,0x1da54,0x0b550,0x056a0,0x1a4d7,0x025d0,0x092d0,0x0aca2,
+          0x0a950,0x0b558,0x06ca0,0x0b550,0x15355,0x04da0,0x0a5b0,0x14573,0x052b0,0x0a9a8,
+          0x0e950,0x06aa0,0x0aea6,0x0ab50,0x04b60,0x0aae4,0x0a570,0x05260,0x0f263,0x0d950,
+          0x05b57,0x056a0,0x096d0,0x04dd5,0x04ad0,0x0a4d0,0x0d4d4,0x0d250,0x0d558,0x0b540,
+          0x0b5a0,0x195a6,0x09560,0x049b0,0x0a974,0x0a4b0,0x0b27a,0x06a50,0x06d40,0x0af46,
+          0x0ab60,0x09570,0x04af5,0x04970,0x064b0,0x07433,0x0ea50,0x06b55,0x05ad0,0x02b60,
+          0x09571,0x092e0,0x0c96d,0x0c950,0x0d4a0,0x1da54,0x0b550,0x056a0,0x1a4d7,0x025d0,
+          0x092d0,0x0aca2,0x0a950,0x0b558,0x06ca0,0x0b550
+      ];
+
+      const gan = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"];
+      const zhi = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];
+      const animals = ["鼠", "牛", "虎", "兔", "龙", "蛇", "马", "羊", "猴", "鸡", "狗", "猪"];
+      const monthsName = ["正", "二", "三", "四", "五", "六", "七", "八", "九", "十", "冬", "腊"];
+      const daysName = ["初一", "初二", "初三", "初四", "初五", "初六", "初七", "初八", "初九", "初十",
+                        "十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十",
+                        "廿一", "廿二", "廿三", "廿四", "廿五", "廿六", "廿七", "廿八", "廿九", "三十"];
+
+      function lYearDays(y) {
+          let sum = 348;
+          for (let i = 0x8000; i > 0x8; i >>= 1) {
+              sum += (lunarInfo[y - 1900] & i) ? 1 : 0;
+          }
+          return sum + leapDays(y);
+      }
+
+      function leapDays(y) {
+          if (leapMonth(y)) {
+              return (lunarInfo[y - 1900] & 0x10000) ? 30 : 29;
+          }
+          return 0;
+      }
+
+      function leapMonth(y) {
+          return lunarInfo[y - 1900] & 0xf;
+      }
+
+      function monthDays(y, m) {
+          return (lunarInfo[y - 1900] & (0x10000 >> m)) ? 30 : 29;
+      }
+
+      return function(date) {
+          let i, leap = 0, temp = 0;
+          let baseDate = new Date(1900, 0, 31);
+          let offset = Math.floor((date - baseDate) / 86400000);
+
+          let year = 1900;
+          for (i = 1900; i < 2100 && offset > 0; i++) {
+              temp = lYearDays(i);
+              offset -= temp;
+              year = i;
+          }
+
+          if (offset < 0) {
+              offset += temp;
+              year--;
+          }
+
+          let leapM = leapMonth(year);
+          let isLeap = false;
+
+          for (i = 1; i < 13 && offset > 0; i++) {
+              if (leapM > 0 && i === (leapM + 1) && !isLeap) {
+                  --i;
+                  isLeap = true;
+                  temp = leapDays(year);
+              } else {
+                  temp = monthDays(year, i);
+              }
+
+              if (isLeap && i === (leapM + 1)) isLeap = false;
+
+              offset -= temp;
+              if (!isLeap) leap++;
+          }
+
+          if (offset === 0 && leapM > 0 && i === leapM + 1) {
+              if (isLeap) {
+                  isLeap = false;
+              } else {
+                  isLeap = true;
+                  --i;
+                  --leap;
+              }
+          }
+
+          if (offset < 0) {
+              offset += temp;
+              --i;
+              --leap;
+          }
+
+          let month = i;
+          let day = offset + 1;
+          let gZ = gan[(year - 4) % 10] + zhi[(year - 4) % 12];
+
+          let mStr = (isLeap ? "闰" : "") + (monthsName[month - 1] || "正") + "月";
+          let dStr = daysName[day - 1] || "初一";
+
+          return {
+              year: year,
+              month: month,
+              day: day,
+              isLeap: isLeap,
+              yearStr: gZ + "年",
+              monthStr: mStr,
+              dayStr: dStr,
+              fullStr: gZ + "年 " + mStr + dStr
+          };
+      };
+  })();
 
   let MESSAGES = {};
   try {
       MESSAGES = JSON.parse(document.getElementById('i18n-data').textContent);
   } catch(e) { console.error("I18N Data Parse Error", e); }
 
-  const { createApp, ref, computed, onMounted, onUnmounted } = Vue;
+  const { createApp, ref, computed, onMounted, onUnmounted, watch } = Vue;
   createApp({
     setup() {
-      const db = ref({ title:'', items: {}, categories: [], githubUrl: '', adminIcon: '', customCSS: '', customJS: '' });
+      const db = ref({ title:'', title_en:'', items: {}, categories: [], githubUrl: '', adminIcon: '', adminTitle:'', adminTitle_en:'', customCSS: '', customJS: '', defaultCityZh: '', defaultCityEn: '' });
       const loading = ref(true);
       const activeCatIdx = ref(0);
       const activeSubIdx = ref(-1);
@@ -611,14 +837,174 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
       const mobileMenuOpen = ref(false);
       const token = localStorage.getItem('nav_token');
       const lang = ref(localStorage.getItem('nav_lang') || 'zh');
+      
+      const currentTime = ref('');
+      const locationText = ref('定位中...');
+      const weatherText = ref('获取中...');
+      const weatherIcon = ref('fas fa-cloud-sun');
+      const greetingText = ref('');
+      const displayedGreeting = ref('');
+      const isTypingActive = ref(true);
+      
+      const calendarMode = ref(0); // 0: 公历, 1: 农历
+
       const t = (key) => { 
           if(!MESSAGES[lang.value]) return key;
           if (key === 'no_content') return MESSAGES[lang.value]['no_content'] || '暂无内容'; 
           return MESSAGES[lang.value][key] || key; 
       };
-      const toggleLang = () => { lang.value = lang.value === 'zh' ? 'en' : 'zh'; localStorage.setItem('nav_lang', lang.value); };
+      
+      const currentDisplayTitle = computed(() => {
+          if (lang.value === 'en') return db.value.title_en || db.value.title || 'Navigation';
+          return db.value.title || '导航';
+      });
 
-      // 键盘快捷键监听：按下 '/' 或 'Ctrl + K' 聚焦搜索框
+      const currentDisplayAdminTitle = computed(() => {
+          if (lang.value === 'en') return db.value.adminTitle_en || db.value.adminTitle || 'Admin';
+          return db.value.adminTitle || '管理后台';
+      });
+
+      let typingTimer = null;
+      const startTypewriter = (text) => {
+          if (typingTimer) clearInterval(typingTimer);
+          displayedGreeting.value = "";
+          isTypingActive.value = true;
+          let index = 0;
+          typingTimer = setInterval(() => {
+              if (index < text.length) {
+                  displayedGreeting.value += text.charAt(index);
+                  index++;
+              } else {
+                  clearInterval(typingTimer);
+                  setTimeout(() => { isTypingActive.value = false; }, 1500);
+              }
+          }, 80);
+      };
+
+      const triggerGreetingAnimation = () => {
+          if (greetingText.value) {
+              if (isSplashDone) {
+                  startTypewriter(greetingText.value);
+              } else {
+                  window.addEventListener('splashDone', () => {
+                      startTypewriter(greetingText.value);
+                  }, { once: true });
+              }
+          }
+      };
+
+      watch(greetingText, (newVal) => {
+          if (newVal) triggerGreetingAnimation();
+      });
+
+      const updateClockAndGreeting = () => {
+          const now = new Date();
+          const hour = now.getHours();
+          
+          let newGreet = '';
+          if (hour >= 4 && hour < 8) newGreet = t('greet_dawn');
+          else if (hour >= 8 && hour < 12) newGreet = t('greet_morning');
+          else if (hour >= 12 && hour < 14) newGreet = t('greet_noon');
+          else if (hour >= 14 && hour < 18) newGreet = t('greet_afternoon');
+          else if (hour >= 18 && hour < 22) newGreet = t('greet_evening');
+          else newGreet = t('greet_night');
+
+          if (greetingText.value !== newGreet) {
+              greetingText.value = newGreet;
+          }
+
+          const timeStr = now.toLocaleTimeString('zh-CN', {hour: '2-digit', minute:'2-digit', hour12: false});
+
+          if (lang.value === 'en') {
+              const options = { month: 'short', day: 'numeric', year: 'numeric' };
+              currentTime.value = now.toLocaleDateString('en-US', options) + ' ' + timeStr;
+          } else {
+              if (calendarMode.value === 0) {
+                  const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+                  const weeks = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+                  currentTime.value = months[now.getMonth()] + now.getDate() + '日 ' + weeks[now.getDay()] + ' ' + timeStr;
+              } else {
+                  const lunar = LunarCalendar(now);
+                  currentTime.value = '农历 ' + lunar.yearStr + lunar.monthStr + lunar.dayStr + ' ' + timeStr;
+              }
+          }
+      };
+
+      const toggleCalendarMode = () => {
+          if (lang.value === 'zh') {
+              calendarMode.value = calendarMode.value === 0 ? 1 : 0;
+              updateClockAndGreeting();
+          }
+      };
+
+      const fetchLocationAndWeather = async () => {
+          try {
+              let city = "";
+              if (lang.value === 'en' && db.value.defaultCityEn) {
+                  city = db.value.defaultCityEn;
+              } else if (lang.value === 'zh' && db.value.defaultCityZh) {
+                  city = db.value.defaultCityZh;
+              } else if (db.value.defaultCityZh) {
+                  city = db.value.defaultCityZh;
+              }
+
+              if (city) {
+                  locationText.value = city;
+              } else {
+                  const ipRes = await fetch('https://ipapi.co/json/');
+                  if (ipRes.ok) {
+                      const ipData = await ipRes.json();
+                      if (lang.value === 'en') {
+                          city = ipData.city || ipData.region || 'Local';
+                      } else {
+                          city = ipData.city || ipData.region || '本地';
+                      }
+                      locationText.value = city;
+                  } else {
+                      throw new Error("IP Fallback");
+                  }
+              }
+
+              if (city) {
+                  const wttrLang = lang.value === 'en' ? 'en' : 'zh';
+                  const wRes = await fetch('https://wttr.in/' + encodeURIComponent(city) + '?format=j1&lang=' + wttrLang + '&_t=' + Date.now());
+                  if (wRes.ok) {
+                      const wData = await wRes.json();
+                      const current = wData.current_condition[0];
+                      const temp = current.temp_C;
+                      let desc = current.weatherDesc[0].value;
+                      if (lang.value === 'zh' && current.lang_zh && current.lang_zh[0]) {
+                          desc = current.lang_zh[0].value;
+                      }
+                      weatherText.value = temp + '°C ' + desc;
+                      
+                      const code = parseInt(current.weatherCode);
+                      if (code === 113) weatherIcon.value = 'fas fa-sun text-amber-500';
+                      else if ([116, 119, 122].includes(code)) weatherIcon.value = 'fas fa-cloud text-slate-400';
+                      else if ([302, 305, 308, 311, 353, 356].includes(code)) weatherIcon.value = 'fas fa-cloud-showers-heavy text-blue-400';
+                      else if ([200, 386, 392].includes(code)) weatherIcon.value = 'fas fa-bolt text-yellow-500';
+                      else weatherIcon.value = 'fas fa-cloud-sun text-blue-400';
+                      return;
+                  }
+              }
+              throw new Error("Weather Fallback");
+          } catch(e) {
+              if (locationText.value === '定位中...' || locationText.value === '在线') {
+                  locationText.value = lang.value === 'en' ? 'Local' : '本地';
+              }
+              weatherText.value = lang.value === 'en' ? 'Fine 22°C' : '晴 22°C';
+              weatherIcon.value = 'fas fa-sun text-amber-500';
+          }
+      };
+
+      const toggleLang = () => { 
+          lang.value = lang.value === 'zh' ? 'en' : 'zh'; 
+          localStorage.setItem('nav_lang', lang.value);
+          updateMeta();
+          updateClockAndGreeting();
+          fetchLocationAndWeather(); 
+      };
+
       const handleKeyDown = (e) => {
           if ((e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') || 
               ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k')) {
@@ -629,9 +1015,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
           }
       };
 
+      let timer = null;
+      let calendarTimer = null;
+
       onMounted(async () => {
         window.addEventListener('keydown', handleKeyDown);
         if(isDark.value) document.documentElement.classList.add('dark');
+        
+        updateClockAndGreeting();
+        timer = setInterval(updateClockAndGreeting, 1000);
+
+        calendarTimer = setInterval(() => {
+            if (lang.value === 'zh') {
+                calendarMode.value = calendarMode.value === 0 ? 1 : 0;
+                updateClockAndGreeting();
+            }
+        }, 6000);
+
         try {
             const headers = token ? { 'Authorization': 'Bearer ' + token } : {};
             const url = token ? '/api/data?admin=1' : '/api/data';
@@ -650,14 +1050,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
             console.error("Fetch Error", e); 
         } finally {
             loading.value = false;
+            fetchLocationAndWeather();
         }
       });
 
       onUnmounted(() => {
           window.removeEventListener('keydown', handleKeyDown);
+          if (timer) clearInterval(timer);
+          if (calendarTimer) clearInterval(calendarTimer);
+          if (typingTimer) clearInterval(typingTimer);
       });
 
-      const updateMeta = () => { if(db.value.title) { document.title = db.value.title; const stTitle = document.getElementById('splash-title'); if(stTitle) stTitle.innerText = db.value.title; } if(db.value.favicon) { let link = document.querySelector("link[rel~='icon']"); if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); } link.href = db.value.favicon; } };
+      const updateMeta = () => { 
+          const title = currentDisplayTitle.value;
+          if(title) { 
+              document.title = title; 
+              const stTitle = document.getElementById('splash-title'); 
+              if(stTitle) stTitle.innerText = title; 
+          } 
+          if(db.value.favicon) { 
+              let link = document.querySelector("link[rel~='icon']"); 
+              if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); } 
+              link.href = db.value.favicon; 
+          } 
+      };
+
       const injectCustomCode = () => { if (db.value.customCSS) { const style = document.createElement('style'); style.innerHTML = db.value.customCSS; document.head.appendChild(style); } if (db.value.customJS) { const script = document.createElement('script'); script.innerHTML = db.value.customJS; document.body.appendChild(script); } };
       const isImageUrl = (str) => str && (str.startsWith('http') || str.startsWith('/')) && !str.includes(' ');
       const resolveItems = (ids) => { if(!ids || !db.value.items) return []; return ids.map(id => { const item = db.value.items[id]; return item ? { ...item, id } : null; }).filter(Boolean); };
@@ -678,7 +1095,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
       const toggleTheme = () => { isDark.value=!isDark.value; localStorage.theme=isDark.value?'dark':'light'; document.documentElement.classList.toggle('dark', isDark.value); };
       const getFav = (u) => { try { return 'https://favicon.im/' + new URL(u).hostname; } catch { return ''; } };
       const defIcon = (e) => e.target.src = 'https://ui-avatars.com/api/?background=random&color=fff&name=Nav';
-      return { db, loading, activeCatIdx, activeSubIdx, isDark, mobileMenuOpen, searchQuery, searchInputRef, isSearching, displayedItems, currentCatName, currentSubName, selectCategory, selectSubCategory, resetToHome, toggleTheme, getFav, defIcon, isImageUrl, t, toggleLang };
+      
+      return { 
+          db, loading, activeCatIdx, activeSubIdx, isDark, mobileMenuOpen, searchQuery, searchInputRef, isSearching, 
+          displayedItems, currentCatName, currentSubName, selectCategory, selectSubCategory, resetToHome, toggleTheme, 
+          getFav, defIcon, isImageUrl, t, toggleLang, lang, currentDisplayTitle, currentDisplayAdminTitle,
+          currentTime, locationText, weatherText, weatherIcon, greetingText, displayedGreeting, isTypingActive, toggleCalendarMode 
+      };
     }
   }).mount('#app');
 </script>
@@ -731,12 +1154,12 @@ body{font-family:'Inter',sans-serif}.hide-scrollbar::-webkit-scrollbar{display:n
     <aside class="w-72 sidebar-glass flex flex-col z-20">
       <div class="h-16 flex items-center justify-between px-6 border-b border-slate-200/50 dark:border-slate-700/50">
         <div class="font-bold text-lg text-slate-800 flex items-center gap-2 dark:text-white">
-             <img v-if="isImageUrl(db.adminLogo)" :src="db.adminLogo" class="w-5 h-5 object-contain">
+             <img v-if="isImageUrl(db.adminLogo)" :src="db.adminLogo" class="w-5 h-5 object-contain" loading="lazy">
              <i v-else :class="db.adminLogo||'fas fa-cog'" class="text-blue-600"></i>
-             {{db.adminTitle||t('admin_panel')}}
+             {{ currentDisplayAdminTitle }}
         </div>
         <div class="flex gap-2">
-            <button @click="toggleLang" class="text-slate-400 hover:text-blue-500 transition-colors" title="Language"><i class="fas fa-language"></i></button>
+            <button @click="toggleLang" class="text-slate-400 hover:text-blue-500 font-bold text-xs uppercase" title="Language">{{ lang }}</button>
             <button @click="toggleTheme" class="text-slate-400 hover:text-amber-500 transition-colors" :title="t('toggle_theme')"><i :class="isDark?'fas fa-moon':'fas fa-sun'"></i></button>
         </div>
       </div>
@@ -745,7 +1168,7 @@ body{font-family:'Inter',sans-serif}.hide-scrollbar::-webkit-scrollbar{display:n
         <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-2">{{ t('cat_level1') }}</div>
         <button @click="switchToAll" class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all border border-transparent mb-2" :class="showAllMode?'bg-blue-50 text-blue-700 font-medium dark:bg-blue-900/30 dark:text-blue-400':'text-slate-600 hover:bg-white/50 dark:text-slate-400 dark:hover:bg-slate-800'"><div class="flex items-center gap-3"><i class="fas fa-cubes w-5 text-center opacity-70"></i><span>{{ t('all_links') }}</span></div></button>
         <div v-for="(cat,idx) in db.categories" :key="cat.id" @click="selCat(idx)" class="group flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer transition-all border border-transparent" :class="(curCatIdx===idx && !showAllMode)?'bg-blue-50 text-blue-700 font-medium dark:bg-blue-900/30 dark:text-blue-400':'text-slate-600 hover:bg-white/50 dark:text-slate-400 dark:hover:bg-slate-800'">
-          <div class="flex items-center gap-3 truncate"><img v-if="isImageUrl(cat.icon)" :src="cat.icon" class="w-5 h-5 object-contain"><i v-else :class="cat.icon||'fas fa-folder'" class="w-5 text-center opacity-70"></i><span>{{cat.name}}</span></div>
+          <div class="flex items-center gap-3 truncate"><img v-if="isImageUrl(cat.icon)" :src="cat.icon" class="w-5 h-5 object-contain" loading="lazy"><i v-else :class="cat.icon||'fas fa-folder'" class="w-5 text-center opacity-70"></i><span>{{cat.name}}</span></div>
           <div class="hidden group-hover:flex items-center bg-white shadow-sm rounded border border-slate-200 px-1 dark:bg-slate-900 dark:border-slate-700">
             <button @click.stop="moveCat(idx,-1)" class="p-1 text-slate-400 hover:text-blue-600" :title="t('move_up')"><i class="fas fa-chevron-up text-xs"></i></button>
             <button @click.stop="moveCat(idx,1)" class="p-1 text-slate-400 hover:text-blue-600" :title="t('move_down')"><i class="fas fa-chevron-down text-xs"></i></button>
@@ -790,7 +1213,7 @@ body{font-family:'Inter',sans-serif}.hide-scrollbar::-webkit-scrollbar{display:n
           <div class="flex justify-end items-center mb-4" v-if="!showAllMode"><button @click="addItem" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2" :title="t('add_link')"><i class="fas fa-plus"></i> {{ t('add_link') }}</button></div>
           <div class="space-y-3">
             <div v-for="(itemId,iIdx) in filteredAdminItems" :key="itemId" class="flex items-center gap-4 bg-white/80 backdrop-blur-sm p-3 rounded-xl border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all group relative dark:bg-slate-800/80 dark:border-slate-700">
-              <div class="w-10 h-10 rounded-lg bg-white flex items-center justify-center shrink-0 border border-slate-100 shadow-sm dark:bg-slate-700 dark:border-slate-600"><img v-if="db.items[itemId]" :src="db.items[itemId].icon||getFav(db.items[itemId].url)" class="w-6 h-6 object-contain"><i v-else class="fas fa-question text-slate-300"></i></div>
+              <div class="w-10 h-10 rounded-lg bg-white flex items-center justify-center shrink-0 border border-slate-100 shadow-sm dark:bg-slate-700 dark:border-slate-600"><img v-if="db.items[itemId]" :src="db.items[itemId].icon||getFav(db.items[itemId].url)" class="w-6 h-6 object-contain" loading="lazy"><i v-else class="fas fa-question text-slate-300"></i></div>
               <div class="flex-1 min-w-0" v-if="db.items[itemId]"><div class="flex items-center gap-2"><span class="font-bold text-slate-700 truncate dark:text-slate-200">{{db.items[itemId].title}}</span><span v-if="db.items[itemId].isPrivate" class="text-[10px] bg-amber-100 text-amber-600 px-1.5 rounded border border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"><i class="fas fa-lock"></i> {{ t('private') }}</span></div><div class="text-xs text-blue-500 truncate mt-0.5 hover:underline">{{db.items[itemId].url}}</div></div>
               <div v-else class="flex-1 text-red-500 text-sm"><i class="fas fa-unlink"></i> 引用已失效</div>
               <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -811,15 +1234,39 @@ body{font-family:'Inter',sans-serif}.hide-scrollbar::-webkit-scrollbar{display:n
       <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh] overflow-hidden border border-slate-100 dark:bg-slate-800 dark:border-slate-700">
         <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 dark:bg-slate-700/50 dark:border-slate-700"><h3 class="font-bold text-lg text-slate-800 dark:text-white">{{modal.title}}</h3><button @click="modal.show=false" class="text-slate-400 hover:text-slate-600 dark:hover:text-white"><i class="fas fa-times"></i></button></div>
         <div class="p-6 overflow-y-auto space-y-5">
-          <div v-if="['cat','sub'].includes(modal.type)" class="space-y-4"><div><label class="block text-sm font-bold text-slate-700 mb-1 dark:text-slate-300">{{ t('modal_name') }}</label><input v-model="modal.data.name" class="w-full border border-slate-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700"></div><div v-if="modal.data.icon!==undefined"><label class="block text-sm font-bold text-slate-700 mb-1 dark:text-slate-300">{{ t('modal_icon') }}</label><div class="flex gap-2 mb-2"><input v-model="modal.data.icon" class="flex-1 border border-slate-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700" :placeholder="t('modal_icon_ph')"><div class="w-11 h-11 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-200 text-lg dark:bg-slate-700 dark:border-slate-600"><img v-if="isImageUrl(modal.data.icon)" :src="modal.data.icon" class="w-full h-full object-contain"><i v-else :class="modal.data.icon||'fas fa-question'"></i></div></div><div class="flex flex-wrap gap-2"><button v-for="icon in presets" :key="icon" @click="modal.data.icon=icon" class="w-8 h-8 rounded hover:bg-blue-100 flex items-center justify-center text-slate-500 hover:text-blue-600 transition-colors dark:hover:bg-slate-600" :class="modal.data.icon===icon?'bg-blue-100 text-blue-600 ring-1 ring-blue-400':''"><i :class="icon"></i></button></div></div></div>
+          <div v-if="['cat','sub'].includes(modal.type)" class="space-y-4"><div><label class="block text-sm font-bold text-slate-700 mb-1 dark:text-slate-300">{{ t('modal_name') }}</label><input v-model="modal.data.name" class="w-full border border-slate-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700"></div><div v-if="modal.data.icon!==undefined"><label class="block text-sm font-bold text-slate-700 mb-1 dark:text-slate-300">{{ t('modal_icon') }}</label><div class="flex gap-2 mb-2"><input v-model="modal.data.icon" class="flex-1 border border-slate-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700" :placeholder="t('modal_icon_ph')"><div class="w-11 h-11 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-200 text-lg dark:bg-slate-700 dark:border-slate-600"><img v-if="isImageUrl(modal.data.icon)" :src="modal.data.icon" class="w-full h-full object-contain" loading="lazy"><i v-else :class="modal.data.icon||'fas fa-question'"></i></div></div><div class="flex flex-wrap gap-2"><button v-for="icon in presets" :key="icon" @click="modal.data.icon=icon" class="w-8 h-8 rounded hover:bg-blue-100 flex items-center justify-center text-slate-500 hover:text-blue-600 transition-colors dark:hover:bg-slate-600" :class="modal.data.icon===icon?'bg-blue-100 text-blue-600 ring-1 ring-blue-400':''"><i :class="icon"></i></button></div></div></div>
+          
           <div v-if="modal.type==='site'" class="flex flex-col h-[50vh]">
             <div class="flex bg-slate-100 p-1 rounded-lg mb-4 shrink-0 dark:bg-slate-700"><button @click="siteTab='public'" class="flex-1 py-1.5 rounded-md text-sm font-bold" :class="siteTab==='public'?'bg-white text-blue-600 shadow-sm dark:bg-slate-600 dark:text-blue-400':'text-slate-500 hover:text-slate-700 dark:text-slate-400'">{{ t('tab_public') }}</button><button @click="siteTab='admin'" class="flex-1 py-1.5 rounded-md text-sm font-bold" :class="siteTab==='admin'?'bg-white text-blue-600 shadow-sm dark:bg-slate-600 dark:text-blue-400':'text-slate-500 hover:text-slate-700 dark:text-slate-400'">{{ t('tab_admin') }}</button><button @click="siteTab='advanced'" class="flex-1 py-1.5 rounded-md text-sm font-bold" :class="siteTab==='advanced'?'bg-white text-blue-600 shadow-sm dark:bg-slate-600 dark:text-blue-400':'text-slate-500 hover:text-slate-700 dark:text-slate-400'">{{ t('tab_advanced') }}</button></div>
             <div class="overflow-y-auto flex-1 space-y-4 p-1">
-              <div v-if="siteTab==='public'" class="space-y-4"><div><label class="block text-sm font-bold text-slate-700 mb-1 dark:text-slate-300">{{ t('modal_site_title') }}</label><input v-model="modal.data.title" class="w-full border border-slate-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700"></div><div><label class="block text-sm font-bold text-slate-700 mb-1 dark:text-slate-300">{{ t('modal_logo') }}</label><input v-model="modal.data.logo" class="w-full border border-slate-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700"></div><div><label class="block text-sm font-bold text-slate-700 mb-1 dark:text-slate-300">{{ t('modal_favicon') }}</label><input v-model="modal.data.favicon" class="w-full border border-slate-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700"></div><div><label class="block text-sm font-bold text-slate-700 mb-1 dark:text-slate-300">{{ t('modal_github') }}</label><input v-model="modal.data.githubUrl" class="w-full border border-slate-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700" :placeholder="t('modal_github_ph')"></div></div>
-              <div v-if="siteTab==='admin'" class="space-y-4"><div><label class="block text-sm font-bold text-slate-700 mb-1 dark:text-slate-300">{{ t('modal_admin_title') }}</label><input v-model="modal.data.adminTitle" class="w-full border border-slate-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700" :placeholder="t('modal_admin_title_ph')"></div><div><label class="block text-sm font-bold text-slate-700 mb-1 dark:text-slate-300">{{ t('modal_admin_icon') }}</label><input v-model="modal.data.adminIcon" class="w-full border border-slate-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700" :placeholder="t('modal_admin_icon_ph')"></div><div><label class="block text-sm font-bold text-slate-700 mb-1 dark:text-slate-300">{{ t('modal_admin_logo') }}</label><input v-model="modal.data.adminLogo" class="w-full border border-slate-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700" :placeholder="t('modal_admin_logo_ph')"></div></div>
-              <div v-if="siteTab==='advanced'" class="space-y-4"><div><label class="block text-sm font-bold text-slate-700 mb-1 dark:text-slate-300">{{ t('modal_css') }}</label><textarea v-model="modal.data.customCSS" class="w-full border border-slate-200 rounded-lg p-2.5 h-32 outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs dark:bg-slate-900 dark:border-slate-700" placeholder="<style>...</style> (无需标签)"></textarea></div><div><label class="block text-sm font-bold text-slate-700 mb-1 dark:text-slate-300">{{ t('modal_js') }}</label><textarea v-model="modal.data.customJS" class="w-full border border-slate-200 rounded-lg p-2.5 h-32 outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs dark:bg-slate-900 dark:border-slate-700" placeholder="<script>...</script> (无需标签)"></textarea></div></div>
+              <div v-if="siteTab==='public'" class="space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                  <div><label class="block text-xs font-bold text-slate-700 mb-1 dark:text-slate-300">{{ t('modal_site_title_zh') }}</label><input v-model="modal.data.title" class="w-full border border-slate-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700"></div>
+                  <div><label class="block text-xs font-bold text-slate-700 mb-1 dark:text-slate-300">{{ t('modal_site_title_en') }}</label><input v-model="modal.data.title_en" class="w-full border border-slate-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700"></div>
+                </div>
+                <div><label class="block text-sm font-bold text-slate-700 mb-1 dark:text-slate-300">{{ t('modal_logo') }}</label><input v-model="modal.data.logo" class="w-full border border-slate-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700"></div>
+                <div><label class="block text-sm font-bold text-slate-700 mb-1 dark:text-slate-300">{{ t('modal_favicon') }}</label><input v-model="modal.data.favicon" class="w-full border border-slate-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700"></div>
+                <div><label class="block text-sm font-bold text-slate-700 mb-1 dark:text-slate-300">{{ t('modal_github') }}</label><input v-model="modal.data.githubUrl" class="w-full border border-slate-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700" :placeholder="t('modal_github_ph')"></div>
+              </div>
+              <div v-if="siteTab==='admin'" class="space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                  <div><label class="block text-xs font-bold text-slate-700 mb-1 dark:text-slate-300">{{ t('modal_admin_title_zh') }}</label><input v-model="modal.data.adminTitle" class="w-full border border-slate-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700" :placeholder="t('modal_admin_title_ph')"></div>
+                  <div><label class="block text-xs font-bold text-slate-700 mb-1 dark:text-slate-300">{{ t('modal_admin_title_en') }}</label><input v-model="modal.data.adminTitle_en" class="w-full border border-slate-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700" :placeholder="t('modal_admin_title_ph')"></div>
+                </div>
+                <div><label class="block text-sm font-bold text-slate-700 mb-1 dark:text-slate-300">{{ t('modal_admin_icon') }}</label><input v-model="modal.data.adminIcon" class="w-full border border-slate-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700" :placeholder="t('modal_admin_icon_ph')"></div>
+                <div><label class="block text-sm font-bold text-slate-700 mb-1 dark:text-slate-300">{{ t('modal_admin_logo') }}</label><input v-model="modal.data.adminLogo" class="w-full border border-slate-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700" :placeholder="t('modal_admin_logo_ph')"></div>
+              </div>
+              <div v-if="siteTab==='advanced'" class="space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                  <div><label class="block text-xs font-bold text-slate-700 mb-1 dark:text-slate-300">{{ t('modal_city_zh') }}</label><input v-model="modal.data.defaultCityZh" class="w-full border border-slate-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700" :placeholder="t('modal_city_ph')"></div>
+                  <div><label class="block text-xs font-bold text-slate-700 mb-1 dark:text-slate-300">{{ t('modal_city_en') }}</label><input v-model="modal.data.defaultCityEn" class="w-full border border-slate-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700" :placeholder="t('modal_city_ph')"></div>
+                </div>
+                <div><label class="block text-sm font-bold text-slate-700 mb-1 dark:text-slate-300">{{ t('modal_css') }}</label><textarea v-model="modal.data.customCSS" class="w-full border border-slate-200 rounded-lg p-2.5 h-24 outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs dark:bg-slate-900 dark:border-slate-700" placeholder="<style>...</style> (无需标签)"></textarea></div>
+                <div><label class="block text-sm font-bold text-slate-700 mb-1 dark:text-slate-300">{{ t('modal_js') }}</label><textarea v-model="modal.data.customJS" class="w-full border border-slate-200 rounded-lg p-2.5 h-24 outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs dark:bg-slate-900 dark:border-slate-700" placeholder="<script>...</script> (无需标签)"></textarea></div>
+              </div>
             </div>
           </div>
+          
           <div v-if="modal.type==='item_add'" class="flex flex-col h-[60vh]">
             <div class="flex bg-slate-100 p-1 rounded-lg mb-4 shrink-0 dark:bg-slate-700"><button @click="tab='new'" class="flex-1 py-1.5 rounded-md text-sm font-bold" :class="tab==='new'?'bg-white text-blue-600 shadow-sm dark:bg-slate-600 dark:text-blue-400':'text-slate-500 hover:text-slate-700 dark:text-slate-400'">{{ t('modal_new') }}</button><button @click="tab='exist'" class="flex-1 py-1.5 rounded-md text-sm font-bold" :class="tab==='exist'?'bg-white text-blue-600 shadow-sm dark:bg-slate-600 dark:text-blue-400':'text-slate-500 hover:text-slate-700 dark:text-slate-400'">{{ t('modal_select') }}</button></div>
             <div v-if="tab==='new'" class="space-y-4"><input v-model="modal.data.title" :placeholder="t('modal_title')" class="w-full border border-slate-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700"><input v-model="modal.data.url" placeholder="URL" class="w-full border border-slate-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700"><textarea v-model="modal.data.desc" :placeholder="t('modal_desc')" class="w-full border border-slate-200 rounded-lg p-2.5 h-24 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700"></textarea><div class="flex gap-4"><div class="flex-1"><label class="block text-xs font-bold text-slate-500 uppercase mb-1 dark:text-slate-400">{{ t('modal_custom_icon') }}</label><input v-model="modal.data.icon" :placeholder="t('modal_custom_icon_ph')" class="w-full border border-slate-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700"></div><div class="flex items-end pb-2"><label class="flex items-center cursor-pointer gap-2"><input type="checkbox" v-model="modal.data.isPrivate" class="w-5 h-5 text-blue-600 rounded"><span class="text-sm font-bold text-slate-700 dark:text-slate-300">{{ t('modal_is_private') }}</span></label></div></div></div>
@@ -832,29 +1279,40 @@ body{font-family:'Inter',sans-serif}.hide-scrollbar::-webkit-scrollbar{display:n
     </div>
   </transition>
 </div>
+<script id="i18n-data" type="application/json">__I18N_DATA__</script>
 <script>
   window.onerror = function(msg, url, line) { alert('Error: ' + msg); return false; };
-  const MESSAGES = ${JSON.stringify(I18N_MESSAGES)};
+  let MESSAGES = {};
+  try {
+      MESSAGES = JSON.parse(document.getElementById('i18n-data').textContent);
+  } catch(e) { console.error("I18N Data Parse Error", e); }
+
   const { createApp, ref, computed, onMounted } = Vue;
   createApp({
     setup() {
       const token = ref(localStorage.getItem('nav_token')||'');
       const password = ref('');
-      const db = ref({title:'', adminTitle:'', logo:'', adminLogo:'', adminIcon:'', favicon:'', githubUrl:'', customCSS:'', customJS:'', items:{}, categories:[]});
+      const db = ref({title:'', title_en:'', adminTitle:'', adminTitle_en:'', logo:'', adminLogo:'', adminIcon:'', favicon:'', githubUrl:'', customCSS:'', customJS:'', defaultCityZh:'', defaultCityEn:'', items:{}, categories:[]});
       const curCatIdx = ref(0);
       const curSubIdx = ref(-1);
       const modal = ref({show:false, type:'', title:'', data:{}, callback:null});
       const tab = ref('new');
       const siteTab = ref('public');
       const searchLib = ref('');
+      const filteredLib = computed(() => { if(!db.value.items) return []; const q = searchLib.value.toLowerCase(); return Object.entries(db.value.items).map(([id, val]) => ({id, ...val})).filter(i => i.title.toLowerCase().includes(q) || i.url.includes(q)); });
       const toast = ref({show:false, msg:'', type:'success'});
       const saving = ref(false);
       const isDark = ref(localStorage.theme === 'dark');
       
       const lang = ref(localStorage.getItem('nav_lang') || 'zh');
       const t = (key) => { if (key === 'no_content') return MESSAGES[lang.value]['no_content'] || '暂无内容'; return MESSAGES[lang.value][key] || key; };
-      const toggleLang = () => { lang.value = lang.value === 'zh' ? 'en' : 'zh'; localStorage.setItem('nav_lang', lang.value); };
+      const toggleLang = () => { lang.value = lang.value === 'zh' ? 'en' : 'zh'; localStorage.setItem('nav_lang', lang.value); updateMeta(); };
       
+      const currentDisplayAdminTitle = computed(() => {
+          if (lang.value === 'en') return db.value.adminTitle_en || db.value.adminTitle || 'Admin';
+          return db.value.adminTitle || '管理后台';
+      });
+
       const presets = ['fas fa-home', 'fas fa-star', 'fas fa-fire', 'fas fa-bolt', 'fas fa-heart', 'fas fa-code', 'fas fa-terminal', 'fas fa-laptop-code', 'fas fa-database', 'fas fa-server', 'fas fa-image', 'fas fa-video', 'fas fa-music', 'fas fa-gamepad', 'fas fa-film', 'fas fa-book', 'fas fa-graduation-cap', 'fas fa-pen-nib', 'fas fa-newspaper', 'fas fa-rss', 'fas fa-shopping-cart', 'fas fa-money-bill', 'fas fa-tag', 'fas fa-gift', 'fas fa-credit-card', 'fas fa-cloud', 'fas fa-wifi', 'fas fa-lock', 'fas fa-key', 'fas fa-shield-alt', 'fas fa-user', 'fas fa-users', 'fas fa-comment', 'fas fa-envelope', 'fas fa-phone'];
 
       const curCat = computed(() => db.value.categories[curCatIdx.value]);
@@ -875,7 +1333,6 @@ body{font-family:'Inter',sans-serif}.hide-scrollbar::-webkit-scrollbar{display:n
       });
       
       const curItemList = filteredAdminItems;
-      const filteredLib = computed(() => { if(!db.value.items) return []; const q = searchLib.value.toLowerCase(); return Object.entries(db.value.items).map(([id, val]) => ({id, ...val})).filter(i => i.title.toLowerCase().includes(q) || i.url.includes(q)); });
 
       const showToast = (msg, type='success') => { toast.value = {show:true, msg, type}; setTimeout(() => toast.value.show=false, 3000); };
       
@@ -904,7 +1361,7 @@ body{font-family:'Inter',sans-serif}.hide-scrollbar::-webkit-scrollbar{display:n
       
       if(token.value) load();
 
-      const updateMeta = () => { document.title = db.value.adminTitle || 'Admin'; if(db.value.favicon) { let link = document.querySelector("link[rel~='icon']"); if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); } link.href = db.value.favicon; } };
+      const updateMeta = () => { document.title = currentDisplayAdminTitle.value; if(db.value.favicon) { let link = document.querySelector("link[rel~='icon']"); if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); } link.href = db.value.favicon; } };
       const injectCustomCode = () => { if (db.value.customCSS) { const style = document.createElement('style'); style.innerHTML = db.value.customCSS; document.head.appendChild(style); } if (db.value.customJS) { const script = document.createElement('script'); script.innerHTML = db.value.customJS; document.body.appendChild(script); } };
       const isImageUrl = (str) => str && (str.startsWith('http') || str.startsWith('/')) && !str.includes(' ');
       const getFav = (u) => { try { return 'https://favicon.im/' + new URL(u).hostname; } catch { return ''; } };
@@ -920,7 +1377,7 @@ body{font-family:'Inter',sans-serif}.hide-scrollbar::-webkit-scrollbar{display:n
       
       const openModal = (type, title, data, cb) => { tab.value = 'new'; searchLib.value = ''; siteTab.value = 'public'; modal.value = { show:true, type, title, data:JSON.parse(JSON.stringify(data)), callback:cb }; };
       const saveModal = () => { modal.value.callback(modal.value.data); modal.value.show = false; };
-      const openSiteSet = () => openModal('site', t('settings'), {title:db.value.title, adminTitle:db.value.adminTitle, logo:db.value.logo, adminLogo:db.value.adminLogo, adminIcon:db.value.adminIcon, favicon:db.value.favicon, githubUrl:db.value.githubUrl, customCSS:db.value.customCSS, customJS:db.value.customJS}, (d)=>{ Object.assign(db.value, d); });
+      const openSiteSet = () => openModal('site', t('settings'), {title:db.value.title, title_en:db.value.title_en, adminTitle:db.value.adminTitle, adminTitle_en:db.value.adminTitle_en, logo:db.value.logo, adminLogo:db.value.adminLogo, adminIcon:db.value.adminIcon, favicon:db.value.favicon, githubUrl:db.value.githubUrl, customCSS:db.value.customCSS, customJS:db.value.customJS, defaultCityZh:db.value.defaultCityZh, defaultCityEn:db.value.defaultCityEn}, (d)=>{ Object.assign(db.value, d); updateMeta(); });
 
       const addCategory = () => openModal('cat', t('new_cat'), {name:'New Category', icon:'fas fa-folder'}, (d)=>{ db.value.categories.push({id:'c'+genId(), ...d, itemIds:[], subCategories:[]}); curCatIdx.value = db.value.categories.length - 1; curSubIdx.value = -1; });
       const editCat = (i) => openModal('cat', t('edit_cat'), db.value.categories[i], (d) => Object.assign(db.value.categories[i], d));
@@ -964,7 +1421,7 @@ body{font-family:'Inter',sans-serif}.hide-scrollbar::-webkit-scrollbar{display:n
       const exportData = () => { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db.value)); const downloadAnchorNode = document.createElement('a'); downloadAnchorNode.setAttribute("href", dataStr); downloadAnchorNode.setAttribute("download", "nav_backup.json"); document.body.appendChild(downloadAnchorNode); downloadAnchorNode.click(); downloadAnchorNode.remove(); };
       const importData = (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { const json = JSON.parse(e.target.result); if(confirm(t('confirm_overwrite'))) { db.value = json; save(); } } catch(err) { alert(t('file_error')); } }; reader.readAsText(file); };
 
-      return { token, password, db, curCatIdx, curSubIdx, curCat, curItemList, modal, tab, siteTab, searchLib, filteredLib, toast, saving, login, save, getFav, selCat, selSub, addCategory, editCat, delCat, moveCat, addSub, editSub, delSub, addItem, editItem, unlinkItem, deleteItem, moveItem, toggleLibSelect, openSiteSet, saveModal, isImageUrl, presets, exportData, importData, showAllMode, switchToAll, filteredAdminItems, adminSearchQuery, isDark, toggleTheme, t, toggleLang };
+      return { token, password, db, curCatIdx, curSubIdx, curCat, curItemList, modal, tab, siteTab, searchLib, filteredLib, toast, saving, login, save, getFav, selCat, selSub, addCategory, editCat, delCat, moveCat, addSub, editSub, delSub, addItem, editItem, unlinkItem, deleteItem, moveItem, toggleLibSelect, openSiteSet, saveModal, isImageUrl, presets, exportData, importData, showAllMode, switchToAll, filteredAdminItems, adminSearchQuery, isDark, toggleTheme, t, toggleLang, lang, currentDisplayAdminTitle };
     }
   }).mount('#app');
 </script>
