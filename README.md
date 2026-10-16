@@ -72,14 +72,14 @@ Commentary: It sounds very sophisticated and elegant, fitting the image of a "na
         * Click **Add** -> **KV Namespace**.
         * **Variable name:** `NAV_DB` (**Must be exactly this**).
         * **KV Namespace:** Select the `NAV_KV` you created in step 2.
-        * Click **Deploy**.
+        * Click Save.
 
     * **Step B: Set Password**
         * Click the **Settings** tab -> **Variables**.
         * Click **Add variable**.
         * **Variable name:** `ADMIN_PASSWORD`.
         * **Value:** Your desired password (e.g., `123456`).
-        * Click **Deploy** (or "Save and Deploy").
+        * Click Save.
 
 4.  **Upload Code:**
     * Click the **Edit code** button (top right).
@@ -146,14 +146,14 @@ Commentary: It sounds very sophisticated and elegant, fitting the image of a "na
         * 点击 **添加 (Add)** -> **KV 命名空间**。
         * **变量名称 (Variable name):** 填写 `NAV_DB` (**必须完全一致，注意大写**)。
         * **KV 命名空间:** 选择你在第 2 步创建的 `NAV_KV`。
-        * 点击 **部署 (Deploy)** 保存。
+        * 点击保存。
 
     * **步骤 B: 设置后台密码**
         * 点击 **设置 (Settings)** 标签页 -> **变量 (Variables)**。
         * 点击 **添加变量 (Add variable)**。
         * **变量名称:** 填写 `ADMIN_PASSWORD`。
         * **值:** 填写你想要的后台登录密码 (例如 `123456`)。
-        * 点击 **部署 (Deploy)** 保存。
+        * 点击保存。
 
 4.  **上传代码:**
     * 点击右上角的 **编辑代码 (Edit code)** 按钮。
