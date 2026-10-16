@@ -1,6 +1,6 @@
 /**
- * Cloudflare Worker Navigation - V25.9 Fixed Edition
- * 修复内容：内置高精度农历转换算法，彻底解决农历日期计算不准的问题。
+ * Cloudflare Worker Navigation - V25.11 Fixed Dashboard Edition
+ * 修正：增大问候语与日期行间距，并将仪表盘整体下移贴近底部
  */
 
 const DEFAULT_DATA = {
@@ -579,7 +579,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
     </div>
   </header>
 
-  <div v-if="mobileMenuOpen" class="fixed inset-0 z-[60] bg-black/20 backdrop-blur-sm md:hidden" @click="mobileMenuOpen=false"></div>
+  <div v-if="mobileMenuOpen" class="fixed inset-0 z-[60] bg-black/25 backdrop-blur-sm md:hidden" @click="mobileMenuOpen=false"></div>
   <transition name="drawer">
     <div v-if="mobileMenuOpen" class="fixed inset-y-0 right-0 z-[70] w-72 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-2xl md:hidden border-l border-slate-200 dark:border-slate-700 flex flex-col">
       <div class="p-5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
@@ -602,11 +602,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
     </div>
   </transition>
 
-  <main class="flex-1 container mx-auto px-4 pt-28 pb-16 max-w-7xl flex flex-col animate-fade-in" :key="activeCatIdx + '-' + activeSubIdx + '-' + isSearching">
+  <main class="flex-1 container mx-auto px-4 pt-28 pb-4 max-w-7xl flex flex-col animate-fade-in" :key="activeCatIdx + '-' + activeSubIdx + '-' + isSearching">
     <div v-if="loading" class="flex justify-center mt-20"><div class="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500"></div></div>
     <div v-else class="flex-1 flex flex-col">
       <div v-if="isSearching" class="mb-6 flex items-center gap-2 text-lg font-bold text-slate-700 dark:text-slate-200"><i class="fas fa-search text-orange-500"></i><span>{{ t('search_result') }}: "{{searchQuery}}"</span><span class="text-sm font-normal text-slate-400 ml-2">({{displayedItems.length}} {{ t('items_count') }})</span></div>
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 mb-8">
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 mb-4">
         <a v-for="item in displayedItems" :key="item.id" :href="item.url" target="_blank" class="group card-glass p-3 rounded-xl flex flex-col relative overflow-hidden h-24">
           <div class="flex flex-col items-center justify-center h-full transition-opacity duration-300 group-hover:opacity-10">
              <div class="relative mb-2">
@@ -626,10 +626,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
       </div>
       <div v-if="displayedItems.length===0" class="flex flex-col items-center justify-center py-20 text-slate-400 flex-1"><div class="w-16 h-16 bg-white/50 dark:bg-slate-800/50 rounded-full flex items-center justify-center text-2xl mb-4 shadow-sm"><i class="fas fa-box-open text-slate-300"></i></div><p class="text-sm">{{ t('no_content') }}</p></div>
       
-      <!-- ✨ V25.9 仪表盘（高精度农历 + 打字机动画） -->
-      <div v-if="!isSearching" class="mt-auto pt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-        <div class="flex flex-col gap-2.5 w-full sm:w-auto items-center">
-          <!-- 第一行：日期时间 + 天气 -->
+      <!-- ✨ 底部仪表盘：拉大行间距(gap-6)，并贴近底部(pt-16 pb-2) -->
+      <div v-if="!isSearching" class="mt-auto pt-16 pb-2 flex flex-col items-center gap-6 w-full">
+        <!-- 第一行：问候语卡片（居中） -->
+        <div class="inline-flex items-center justify-center px-5 py-2.5 rounded-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-md border border-white/30 dark:border-white/5 shadow-md">
+          <span class="text-sm font-bold text-slate-700 dark:text-slate-200 tracking-wide whitespace-nowrap">{{ displayedGreeting }}<span v-if="isTypingActive" class="typing-cursor"></span></span>
+        </div>
+
+        <!-- 第二行：时间天气居左/居中，右下角当前位置指示器保持在右侧 -->
+        <div class="relative w-full flex items-center justify-center min-h-[44px]">
+          <!-- 时间/日期 + 天气卡片 -->
           <div class="inline-flex flex-wrap items-center justify-center gap-4 px-5 py-2.5 rounded-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-md border border-white/30 dark:border-white/5 shadow-md">
             <div class="flex items-center gap-2 cursor-pointer transition-opacity duration-300" :title="lang==='zh'?'点击切换公历/农历':''" @click="toggleCalendarMode">
               <div class="flex items-center justify-center w-7 h-7 rounded-full bg-amber-500 text-white shadow-sm text-sm"><i class="fas fa-clock"></i></div>
@@ -645,26 +651,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
               </div>
             </div>
           </div>
-          
-          <!-- 第二行：问候语卡片 -->
-          <div class="w-full flex justify-center">
-            <div class="inline-flex items-center justify-center px-5 py-2.5 rounded-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-md border border-white/30 dark:border-white/5 shadow-md w-auto">
-              <span class="text-sm font-bold text-slate-700 dark:text-slate-200 tracking-wide whitespace-nowrap">{{ displayedGreeting }}<span v-if="isTypingActive" class="typing-cursor"></span></span>
-            </div>
-          </div>
-        </div>
 
-        <div class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-md border border-white/30 dark:border-white/5 shadow-md ml-auto sm:ml-0">
-          <div class="flex items-center justify-center w-7 h-7 rounded-full bg-blue-500 text-white shadow-sm text-sm"><i class="fas fa-folder-open"></i></div>
-          <span class="text-sm font-bold text-slate-800 dark:text-slate-100">{{currentCatName}}</span>
-          <template v-if="currentSubName"><i class="fas fa-chevron-right text-xs text-orange-400"></i><span class="text-sm font-bold text-amber-600 dark:text-amber-400">{{currentSubName}}</span></template>
-          <span class="ml-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/60 dark:bg-black/30 text-slate-600 dark:text-slate-300 border border-black/5 dark:border-white/5">{{displayedItems.length}}</span>
+          <!-- 右下角原位的“当前位置/栏目指示器” -->
+          <div class="absolute right-0 hidden sm:inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-md border border-white/30 dark:border-white/5 shadow-md">
+            <div class="flex items-center justify-center w-6 h-6 rounded-full bg-blue-500 text-white shadow-sm text-xs"><i class="fas fa-folder-open"></i></div>
+            <span class="text-sm font-bold text-slate-800 dark:text-slate-100">{{currentCatName}}</span>
+            <template v-if="currentSubName"><i class="fas fa-chevron-right text-xs text-orange-400"></i><span class="text-sm font-bold text-amber-600 dark:text-amber-400">{{currentSubName}}</span></template>
+            <span class="ml-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/60 dark:bg-black/30 text-slate-600 dark:text-slate-300 border border-black/5 dark:border-white/5">{{displayedItems.length}}</span>
+          </div>
         </div>
       </div>
     </div>
   </main>
   
-  <footer class="bg-slate-200/50 dark:bg-slate-900/50 backdrop-blur-md border-t border-white/20 dark:border-white/5 mt-8 py-6">
+  <footer class="bg-slate-200/50 dark:bg-slate-900/50 backdrop-blur-md border-t border-white/20 dark:border-white/5 mt-4 py-6">
     <div class="container mx-auto px-4 flex flex-wrap justify-center items-center gap-x-6 gap-y-2 text-xs text-slate-500 dark:text-slate-400">
       <div class="flex items-center gap-1 cursor-default group"><span>&copy; ${new Date().getFullYear()}</span><span class="font-bold transition-all duration-300 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-orange-500 group-hover:to-amber-500">{{ currentDisplayTitle }}</span></div>
       <span class="hidden sm:inline-block opacity-30">|</span>
