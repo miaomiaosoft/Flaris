@@ -939,64 +939,94 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 
       const fetchLocationAndWeather = async () => {
           try {
-              let city = "";
+              let latitude, longitude, cityName = "";
+
+              // 1. 获取城市名与经纬度
               if (lang.value === 'en' && db.value.defaultCityEn) {
-                  city = db.value.defaultCityEn;
-              } else if (lang.value === 'zh' && db.value.defaultCityZh) {
-                  city = db.value.defaultCityZh;
+                  cityName = db.value.defaultCityEn;
               } else if (db.value.defaultCityZh) {
-                  city = db.value.defaultCityZh;
+                  cityName = db.value.defaultCityZh;
               }
 
-              if (city) {
-                  locationText.value = city;
-              } else {
+              if (cityName) {
+                  locationText.value = cityName;
+                  // 根据设置的城市名反查经纬度（使用标准字符串拼接）
+                  const geoUrl = 'https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(cityName) + '&count=1&language=' + (lang.value === 'en' ? 'en' : 'zh');
+                  const geoRes = await fetch(geoUrl);
+                  if (geoRes.ok) {
+                      const geoData = await geoRes.json();
+                      if (geoData.results && geoData.results.length > 0) {
+                          latitude = geoData.results[0].latitude;
+                          longitude = geoData.results[0].longitude;
+                          locationText.value = geoData.results[0].name || cityName;
+                      }
+                  }
+              }
+
+              // 2. 如果后台未填城市或坐标获取失败，通过 IP 自动获取高精度坐标
+              if (!latitude || !longitude) {
                   const ipRes = await fetch('https://ipapi.co/json/');
                   if (ipRes.ok) {
                       const ipData = await ipRes.json();
-                      if (lang.value === 'en') {
-                          city = ipData.city || ipData.region || 'Local';
-                      } else {
-                          city = ipData.city || ipData.region || '本地';
+                      latitude = ipData.latitude;
+                      longitude = ipData.longitude;
+                      if (!cityName) {
+                          locationText.value = (lang.value === 'en' ? ipData.city : (ipData.city || '本地')) || '本地';
                       }
-                      locationText.value = city;
-                  } else {
-                      throw new Error("IP Fallback");
                   }
               }
 
-              if (city) {
-                  const wttrLang = lang.value === 'en' ? 'en' : 'zh';
-                  const wRes = await fetch('https://wttr.in/' + encodeURIComponent(city) + '?format=j1&lang=' + wttrLang + '&_t=' + Date.now());
-                  if (wRes.ok) {
-                      const wData = await wRes.json();
-                      const current = wData.current_condition[0];
-                      const temp = current.temp_C;
-                      let desc = current.weatherDesc[0].value;
-                      if (lang.value === 'zh' && current.lang_zh && current.lang_zh[0]) {
-                          desc = current.lang_zh[0].value;
+              // 3. 从 Open-Meteo 获取高精度实时天气数据
+              if (latitude && longitude) {
+                  const weatherUrl = 'https://api.open-meteo.com/v1/forecast?latitude=' + latitude + '&longitude=' + longitude + '&current=temperature_2m,weather_code&timezone=auto';
+                  const weatherRes = await fetch(weatherUrl);
+                  if (weatherRes.ok) {
+                      const weatherData = await weatherRes.json();
+                      const current = weatherData.current;
+                      const temp = Math.round(current.temperature_2m);
+                      const code = current.weather_code;
+
+                      // Open-Meteo WMO 天气代码解析
+                      let desc = "晴";
+                      let icon = "fas fa-sun text-amber-500";
+
+                      if (code === 0) {
+                          desc = lang.value === 'en' ? 'Clear' : '晴';
+                          icon = 'fas fa-sun text-amber-500';
+                      } else if ([1, 2, 3].includes(code)) {
+                          desc = lang.value === 'en' ? 'Partly Cloudy' : '多云';
+                          icon = 'fas fa-cloud-sun text-blue-400';
+                      } else if ([45, 48].includes(code)) {
+                          desc = lang.value === 'en' ? 'Foggy' : '有雾';
+                          icon = 'fas fa-smog text-slate-400';
+                      } else if ([51, 53, 55, 56, 57].includes(code)) {
+                          desc = lang.value === 'en' ? 'Drizzle' : '细雨';
+                          icon = 'fas fa-cloud-rain text-blue-300';
+                      } else if ([61, 63, 65, 66, 67, 80, 81, 82].includes(code)) {
+                          desc = lang.value === 'en' ? 'Rain' : '阵雨/雨';
+                          icon = 'fas fa-cloud-showers-heavy text-blue-500';
+                      } else if ([71, 73, 75, 77, 85, 86].includes(code)) {
+                          desc = lang.value === 'en' ? 'Snow' : '雪';
+                          icon = 'fas fa-snowflake text-blue-200';
+                      } else if ([95, 96, 99].includes(code)) {
+                          desc = lang.value === 'en' ? 'Thunderstorm' : '雷暴';
+                          icon = 'fas fa-bolt text-yellow-500';
                       }
+
                       weatherText.value = temp + '°C ' + desc;
-                      
-                      const code = parseInt(current.weatherCode);
-                      if (code === 113) weatherIcon.value = 'fas fa-sun text-amber-500';
-                      else if ([116, 119, 122].includes(code)) weatherIcon.value = 'fas fa-cloud text-slate-400';
-                      else if ([302, 305, 308, 311, 353, 356].includes(code)) weatherIcon.value = 'fas fa-cloud-showers-heavy text-blue-400';
-                      else if ([200, 386, 392].includes(code)) weatherIcon.value = 'fas fa-bolt text-yellow-500';
-                      else weatherIcon.value = 'fas fa-cloud-sun text-blue-400';
+                      weatherIcon.value = icon;
                       return;
                   }
               }
-              throw new Error("Weather Fallback");
-          } catch(e) {
-              if (locationText.value === '定位中...' || locationText.value === '在线') {
+              throw new Error("Open-Meteo Fetch Failed");
+          } catch (e) {
+              if (locationText.value === '定位中...') {
                   locationText.value = lang.value === 'en' ? 'Local' : '本地';
               }
-              weatherText.value = lang.value === 'en' ? 'Fine 22°C' : '晴 22°C';
+              weatherText.value = lang.value === 'en' ? '22°C Clear' : '22°C 晴';
               weatherIcon.value = 'fas fa-sun text-amber-500';
           }
       };
-
       const toggleLang = () => { 
           lang.value = lang.value === 'zh' ? 'en' : 'zh'; 
           localStorage.setItem('nav_lang', lang.value);
