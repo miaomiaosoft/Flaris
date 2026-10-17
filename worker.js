@@ -1,6 +1,6 @@
 /**
- * Cloudflare Worker Navigation - V25.11 Fixed Dashboard Edition
- * 修正：增大问候语与日期行间距，并将仪表盘整体下移贴近底部
+ * Cloudflare Worker Navigation - V25.11 Fixed Edition
+ * 包含：Open-Meteo高精度天气、随机多句问候语、高透明度轻量仪表盘
  */
 
 const DEFAULT_DATA = {
@@ -124,12 +124,42 @@ const I18N_MESSAGES = {
     tab_public: "前台展示",
     tab_admin: "后台管理",
     tab_advanced: "高级设置",
-    greet_dawn: "清晨好，愿你拥有美好的一天 ✨",
-    greet_morning: "上午好，开启高效的创作时光 ☕",
-    greet_noon: "中午好，记得按时午休与用餐 🥗",
-    greet_afternoon: "下午好，保持专注，继续加油 💻",
-    greet_evening: "傍晚好，卸下疲惫，享受片刻宁静 🌇",
-    greet_night: "夜深了，注意作息，早点休息 🌙"
+    greet_dawn: [
+      "清晨好，愿你拥有美好的一天 ✨",
+      "早安！新的一天充满无限可能 🌅",
+      "晨光熹微，愿你心情如阳光般明媚 🌸",
+      "早上好，开启神清气爽的一天 🍃"
+    ],
+    greet_morning: [
+      "上午好，开启高效的创作时光 ☕",
+      "上午好，保持专注，灵感满满 💡",
+      "加油，愿你今天的每一项任务都轻松搞定 🚀",
+      "保持微笑，开启元气满满的上午 ☀️"
+    ],
+    greet_noon: [
+      "中午好，记得按时午休与用餐 🥗",
+      "午休时间到，好好放松一下吧 🍱",
+      "中午好，给大脑补充一点能量 🍵",
+      "吃个美味的午饭，下午继续加油 🥪"
+    ],
+    greet_afternoon: [
+      "下午好，保持专注，继续加油 💻",
+      "下午茶时间到了，喝杯水歇一歇吧 🍰",
+      "下午好，愿你思路清晰，事半功倍 🌟",
+      "伸个懒腰，打起精神迎战下午 ☕"
+    ],
+    greet_evening: [
+      "傍晚好，卸下疲惫，享受片刻宁静 🌇",
+      "晚霞真美，祝你拥有惬意的傍晚 🌆",
+      "结束了一天的忙碌，好好犒劳下自己 🍲",
+      "傍晚好，享受属于你的轻松时光 ✨"
+    ],
+    greet_night: [
+      "夜深了，注意作息，早点休息 🌙",
+      "晚安，愿你有一个香甜的梦境 💤",
+      "忙碌了一天，今晚好好犒劳自己吧 🛋️",
+      "夜色渐深，卸下一天的疲惫，早点入睡 🌌"
+    ]
   },
   en: {
     search_placeholder: "Search... (Press /)",
@@ -222,12 +252,36 @@ const I18N_MESSAGES = {
     tab_public: "Public View",
     tab_admin: "Admin Panel",
     tab_advanced: "Advanced",
-    greet_dawn: "Early morning, have a wonderful day ✨",
-    greet_morning: "Good morning, time to be productive ☕",
-    greet_noon: "Good noon, enjoy your lunch break 🥗",
-    greet_afternoon: "Good afternoon, keep up the great work 💻",
-    greet_evening: "Good evening, relax and unwind 🌇",
-    greet_night: "Late night, get some good rest 🌙"
+    greet_dawn: [
+      "Early morning, have a wonderful day ✨",
+      "Good morning! A new day full of possibilities 🌅",
+      "Rise and shine, make today count 🌸"
+    ],
+    greet_morning: [
+      "Good morning, time to be productive ☕",
+      "Morning! Stay focused and inspired 💡",
+      "Have a great and productive morning 🚀"
+    ],
+    greet_noon: [
+      "Good noon, enjoy your lunch break 🥗",
+      "Time for lunch! Take a short break 🍱",
+      "Good noon, recharge your energy 🍵"
+    ],
+    greet_afternoon: [
+      "Good afternoon, keep up the great work 💻",
+      "Afternoon! Time for a short tea break 🍰",
+      "Stay energized and make progress 🌟"
+    ],
+    greet_evening: [
+      "Good evening, relax and unwind 🌇",
+      "Enjoy the peaceful evening vibes 🌆",
+      "Time to slow down and rest 🍲"
+    ],
+    greet_night: [
+      "Late night, get some good rest 🌙",
+      "Good night, sweet dreams 💤",
+      "Rest well and recharge for tomorrow 🛋️"
+    ]
   }
 };
 
@@ -626,16 +680,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
       </div>
       <div v-if="displayedItems.length===0" class="flex flex-col items-center justify-center py-20 text-slate-400 flex-1"><div class="w-16 h-16 bg-white/50 dark:bg-slate-800/50 rounded-full flex items-center justify-center text-2xl mb-4 shadow-sm"><i class="fas fa-box-open text-slate-300"></i></div><p class="text-sm">{{ t('no_content') }}</p></div>
       
-      <!-- ✨ 底部仪表盘：提升透明度、弱化边框阴影，使其更自然融合背景 -->
+      <!-- ✨ 底部仪表盘：高透明度、舒适间距、多句随机问候语 -->
       <div v-if="!isSearching" class="mt-auto pt-16 pb-2 flex flex-col items-center gap-6 w-full">
-        <!-- 第一行：问候语卡片（更高透明度） -->
+        <!-- 第一行：问候语卡片（高透明度） -->
         <div class="inline-flex items-center justify-center px-5 py-2.5 rounded-2xl bg-white/40 dark:bg-slate-900/40 backdrop-blur-md border border-white/20 dark:border-white/5 shadow-sm">
           <span class="text-sm font-bold text-slate-800 dark:text-slate-100 tracking-wide whitespace-nowrap">{{ displayedGreeting }}<span v-if="isTypingActive" class="typing-cursor"></span></span>
         </div>
 
         <!-- 第二行：时间天气居左/居中，右下角当前位置指示器保持在右侧 -->
         <div class="relative w-full flex items-center justify-center min-h-[44px]">
-          <!-- 时间/日期 + 天气卡片（更高透明度） -->
+          <!-- 时间/日期 + 天气卡片（高透明度） -->
           <div class="inline-flex flex-wrap items-center justify-center gap-4 px-5 py-2.5 rounded-2xl bg-white/40 dark:bg-slate-900/40 backdrop-blur-md border border-white/20 dark:border-white/5 shadow-sm">
             <div class="flex items-center gap-2 cursor-pointer transition-opacity duration-300 hover:opacity-80" :title="lang==='zh'?'点击切换公历/农历':''" @click="toggleCalendarMode">
               <div class="flex items-center justify-center w-7 h-7 rounded-full bg-amber-500/90 text-white shadow-sm text-sm"><i class="fas fa-clock"></i></div>
@@ -652,7 +706,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
             </div>
           </div>
 
-          <!-- 右下角原位的“当前位置/栏目指示器”（更高透明度） -->
+          <!-- 右下角原位的“当前位置/栏目指示器”（高透明度） -->
           <div class="absolute right-0 hidden sm:inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-white/40 dark:bg-slate-900/40 backdrop-blur-md border border-white/20 dark:border-white/5 shadow-sm">
             <div class="flex items-center justify-center w-6 h-6 rounded-full bg-blue-500/90 text-white shadow-sm text-xs"><i class="fas fa-folder-open"></i></div>
             <span class="text-sm font-bold text-slate-800 dark:text-slate-100">{{currentCatName}}</span>
@@ -719,7 +773,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 
       const gan = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"];
       const zhi = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];
-      const animals = ["鼠", "牛", "虎", "兔", "龙", "蛇", "马", "羊", "猴", "鸡", "狗", "猪"];
       const monthsName = ["正", "二", "三", "四", "五", "六", "七", "八", "九", "十", "冬", "腊"];
       const daysName = ["初一", "初二", "初三", "初四", "初五", "初六", "初七", "初八", "初九", "初十",
                         "十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十",
@@ -843,6 +896,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
       const weatherText = ref('获取中...');
       const weatherIcon = ref('fas fa-cloud-sun');
       const greetingText = ref('');
+      const currentPeriod = ref('');
       const displayedGreeting = ref('');
       const isTypingActive = ref(true);
       
@@ -897,20 +951,29 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
           if (newVal) triggerGreetingAnimation();
       });
 
+      const getRandomGreeting = (key) => {
+          const list = t(key);
+          if (Array.isArray(list) && list.length > 0) {
+              return list[Math.floor(Math.random() * list.length)];
+          }
+          return typeof list === 'string' ? list : '';
+      };
+
       const updateClockAndGreeting = () => {
           const now = new Date();
           const hour = now.getHours();
           
-          let newGreet = '';
-          if (hour >= 4 && hour < 8) newGreet = t('greet_dawn');
-          else if (hour >= 8 && hour < 12) newGreet = t('greet_morning');
-          else if (hour >= 12 && hour < 14) newGreet = t('greet_noon');
-          else if (hour >= 14 && hour < 18) newGreet = t('greet_afternoon');
-          else if (hour >= 18 && hour < 22) newGreet = t('greet_evening');
-          else newGreet = t('greet_night');
+          let periodKey = '';
+          if (hour >= 4 && hour < 8) periodKey = 'greet_dawn';
+          else if (hour >= 8 && hour < 12) periodKey = 'greet_morning';
+          else if (hour >= 12 && hour < 14) periodKey = 'greet_noon';
+          else if (hour >= 14 && hour < 18) periodKey = 'greet_afternoon';
+          else if (hour >= 18 && hour < 22) periodKey = 'greet_evening';
+          else periodKey = 'greet_night';
 
-          if (greetingText.value !== newGreet) {
-              greetingText.value = newGreet;
+          if (!greetingText.value || currentPeriod.value !== periodKey) {
+              currentPeriod.value = periodKey;
+              greetingText.value = getRandomGreeting(periodKey);
           }
 
           const timeStr = now.toLocaleTimeString('zh-CN', {hour: '2-digit', minute:'2-digit', hour12: false});
@@ -941,7 +1004,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
           try {
               let latitude, longitude, cityName = "";
 
-              // 1. 获取城市名与经纬度
               if (lang.value === 'en' && db.value.defaultCityEn) {
                   cityName = db.value.defaultCityEn;
               } else if (db.value.defaultCityZh) {
@@ -950,7 +1012,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 
               if (cityName) {
                   locationText.value = cityName;
-                  // 根据设置的城市名反查经纬度（使用标准字符串拼接）
                   const geoUrl = 'https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(cityName) + '&count=1&language=' + (lang.value === 'en' ? 'en' : 'zh');
                   const geoRes = await fetch(geoUrl);
                   if (geoRes.ok) {
@@ -963,7 +1024,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
                   }
               }
 
-              // 2. 如果后台未填城市或坐标获取失败，通过 IP 自动获取高精度坐标
               if (!latitude || !longitude) {
                   const ipRes = await fetch('https://ipapi.co/json/');
                   if (ipRes.ok) {
@@ -976,7 +1036,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
                   }
               }
 
-              // 3. 从 Open-Meteo 获取高精度实时天气数据
               if (latitude && longitude) {
                   const weatherUrl = 'https://api.open-meteo.com/v1/forecast?latitude=' + latitude + '&longitude=' + longitude + '&current=temperature_2m,weather_code&timezone=auto';
                   const weatherRes = await fetch(weatherUrl);
@@ -986,7 +1045,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
                       const temp = Math.round(current.temperature_2m);
                       const code = current.weather_code;
 
-                      // Open-Meteo WMO 天气代码解析
                       let desc = "晴";
                       let icon = "fas fa-sun text-amber-500";
 
@@ -1027,6 +1085,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
               weatherIcon.value = 'fas fa-sun text-amber-500';
           }
       };
+
       const toggleLang = () => { 
           lang.value = lang.value === 'zh' ? 'en' : 'zh'; 
           localStorage.setItem('nav_lang', lang.value);
