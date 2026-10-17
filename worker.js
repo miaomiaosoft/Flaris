@@ -626,24 +626,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
       </div>
       <div v-if="displayedItems.length===0" class="flex flex-col items-center justify-center py-20 text-slate-400 flex-1"><div class="w-16 h-16 bg-white/50 dark:bg-slate-800/50 rounded-full flex items-center justify-center text-2xl mb-4 shadow-sm"><i class="fas fa-box-open text-slate-300"></i></div><p class="text-sm">{{ t('no_content') }}</p></div>
       
-      <!-- ✨ 底部仪表盘：拉大行间距(gap-6)，并贴近底部(pt-16 pb-2) -->
+      <!-- ✨ 底部仪表盘：提升透明度、弱化边框阴影，使其更自然融合背景 -->
       <div v-if="!isSearching" class="mt-auto pt-16 pb-2 flex flex-col items-center gap-6 w-full">
-        <!-- 第一行：问候语卡片（居中） -->
-        <div class="inline-flex items-center justify-center px-5 py-2.5 rounded-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-md border border-white/30 dark:border-white/5 shadow-md">
-          <span class="text-sm font-bold text-slate-700 dark:text-slate-200 tracking-wide whitespace-nowrap">{{ displayedGreeting }}<span v-if="isTypingActive" class="typing-cursor"></span></span>
+        <!-- 第一行：问候语卡片（更高透明度） -->
+        <div class="inline-flex items-center justify-center px-5 py-2.5 rounded-2xl bg-white/40 dark:bg-slate-900/40 backdrop-blur-md border border-white/20 dark:border-white/5 shadow-sm">
+          <span class="text-sm font-bold text-slate-800 dark:text-slate-100 tracking-wide whitespace-nowrap">{{ displayedGreeting }}<span v-if="isTypingActive" class="typing-cursor"></span></span>
         </div>
 
         <!-- 第二行：时间天气居左/居中，右下角当前位置指示器保持在右侧 -->
         <div class="relative w-full flex items-center justify-center min-h-[44px]">
-          <!-- 时间/日期 + 天气卡片 -->
-          <div class="inline-flex flex-wrap items-center justify-center gap-4 px-5 py-2.5 rounded-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-md border border-white/30 dark:border-white/5 shadow-md">
-            <div class="flex items-center gap-2 cursor-pointer transition-opacity duration-300" :title="lang==='zh'?'点击切换公历/农历':''" @click="toggleCalendarMode">
-              <div class="flex items-center justify-center w-7 h-7 rounded-full bg-amber-500 text-white shadow-sm text-sm"><i class="fas fa-clock"></i></div>
+          <!-- 时间/日期 + 天气卡片（更高透明度） -->
+          <div class="inline-flex flex-wrap items-center justify-center gap-4 px-5 py-2.5 rounded-2xl bg-white/40 dark:bg-slate-900/40 backdrop-blur-md border border-white/20 dark:border-white/5 shadow-sm">
+            <div class="flex items-center gap-2 cursor-pointer transition-opacity duration-300 hover:opacity-80" :title="lang==='zh'?'点击切换公历/农历':''" @click="toggleCalendarMode">
+              <div class="flex items-center justify-center w-7 h-7 rounded-full bg-amber-500/90 text-white shadow-sm text-sm"><i class="fas fa-clock"></i></div>
               <span class="text-sm font-bold text-slate-800 dark:text-slate-100 font-mono">{{ currentTime }}</span>
             </div>
             <span class="opacity-30">|</span>
             <div class="flex items-center gap-2">
-              <div class="flex items-center justify-center w-7 h-7 rounded-full bg-orange-500 text-white shadow-sm text-sm"><i class="fas fa-map-marker-alt"></i></div>
+              <div class="flex items-center justify-center w-7 h-7 rounded-full bg-orange-500/90 text-white shadow-sm text-sm"><i class="fas fa-map-marker-alt"></i></div>
               <span class="text-sm font-bold text-slate-800 dark:text-slate-100">{{ locationText }}</span>
               <div class="flex items-center gap-1.5 text-sm font-extrabold text-blue-600 dark:text-blue-400 ml-1">
                 <i :class="weatherIcon"></i>
@@ -652,12 +652,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
             </div>
           </div>
 
-          <!-- 右下角原位的“当前位置/栏目指示器” -->
-          <div class="absolute right-0 hidden sm:inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-md border border-white/30 dark:border-white/5 shadow-md">
-            <div class="flex items-center justify-center w-6 h-6 rounded-full bg-blue-500 text-white shadow-sm text-xs"><i class="fas fa-folder-open"></i></div>
+          <!-- 右下角原位的“当前位置/栏目指示器”（更高透明度） -->
+          <div class="absolute right-0 hidden sm:inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-white/40 dark:bg-slate-900/40 backdrop-blur-md border border-white/20 dark:border-white/5 shadow-sm">
+            <div class="flex items-center justify-center w-6 h-6 rounded-full bg-blue-500/90 text-white shadow-sm text-xs"><i class="fas fa-folder-open"></i></div>
             <span class="text-sm font-bold text-slate-800 dark:text-slate-100">{{currentCatName}}</span>
             <template v-if="currentSubName"><i class="fas fa-chevron-right text-xs text-orange-400"></i><span class="text-sm font-bold text-amber-600 dark:text-amber-400">{{currentSubName}}</span></template>
-            <span class="ml-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/60 dark:bg-black/30 text-slate-600 dark:text-slate-300 border border-black/5 dark:border-white/5">{{displayedItems.length}}</span>
+            <span class="ml-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/30 dark:bg-black/20 text-slate-700 dark:text-slate-200 border border-black/5 dark:border-white/5">{{displayedItems.length}}</span>
           </div>
         </div>
       </div>
