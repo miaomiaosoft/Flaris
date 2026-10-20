@@ -1,0 +1,536 @@
+/* ==========================================================
+   Flaris 导航 · Just Nav 风格（前台 + 后台 同一份样式）
+   用法：后台 → 站点设置 → 自定义 CSS，整段粘贴（无需 <style> 标签）
+   前台：桌面端（≥768px）为侧边栏布局，手机端保持原有抽屉菜单
+   后台：文件最后一大段，只作用于 /admin（body.h-screen），不影响前台
+   ========================================================== */
+
+/* ---------- 可调变量 ---------- */
+:root {
+  --jn-navy: #1e3a8a;                    /* 主色：选中文字 / Logo */
+  --jn-ink: #14213d;                     /* 卡片标题色 */
+  --jn-muted: #5f5b73;                   /* 未选中分类文字 */
+  --jn-pill: #dbe3f1;                    /* 选中分类的胶囊底色 */
+  --jn-hover: #f3f5fa;                   /* 悬停底色 */
+  --jn-icon-bg: #e5ebf7;                 /* 图标圆底 */
+  --jn-bg: #edf0f5;                      /* 页面底色 */
+  --jn-card: #ffffff;                    /* 卡片 / 侧栏底色 */
+  --jn-shadow: rgba(30, 58, 138, .12);   /* 卡片阴影色 */
+  --jn-side-w: 252px;                    /* 侧边栏宽度 */
+  --jn-card-min: 220px;                  /* 卡片最小宽度（窗口较窄时自动减少列数） */
+  --jn-max-cols: 6;                      /* 最多显示几列 */
+  --jn-gap: 16px;                        /* 卡片间距 */
+  --jn-btn: #1e3a8a;                     /* 主按钮色（后台保存/新增等） */
+  --jn-btn-hover: #1a3278;
+}
+html.dark,
+#app.dark {
+  --jn-btn: #2563eb;
+  --jn-btn-hover: #1d4ed8;
+  --jn-navy: #93c5fd;
+  --jn-ink: #f1f5f9;
+  --jn-muted: #94a3b8;
+  --jn-pill: rgba(96, 165, 250, .16);
+  --jn-hover: rgba(255, 255, 255, .06);
+  --jn-icon-bg: rgba(96, 165, 250, .16);
+  --jn-bg: #0b1120;
+  --jn-card: #172033;
+  --jn-shadow: rgba(0, 0, 0, .35);
+}
+
+/* ---------- 全局 ---------- */
+body {
+  background-image: none !important;
+  background-color: var(--jn-bg) !important;
+}
+.ambient-blob { display: none !important; }
+
+/* ---------- 卡片：大圆角白卡 + 圆形图标 ---------- */
+#app > main a.card-glass {
+  height: 80px !important;
+  padding: 0 18px !important;
+  border-radius: 18px !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  background: var(--jn-card) !important;
+  border: 0 !important;
+  box-shadow: 0 8px 24px -10px var(--jn-shadow) !important;
+  backdrop-filter: none !important;
+}
+#app > main a.card-glass:hover {
+  transform: translate3d(0, -3px, 0) !important;
+  box-shadow: 0 16px 32px -12px var(--jn-shadow) !important;
+}
+#app > main a.card-glass > div:first-child {
+  flex-direction: row !important;
+  justify-content: flex-start !important;
+  gap: 12px;
+  width: 100%;
+  height: 100%;
+  opacity: 1 !important;
+}
+#app > main a.card-glass > div:first-child > div {
+  margin: 0 !important;
+  flex-shrink: 0;
+}
+#app > main a.card-glass > div:first-child > div > div {
+  width: 36px !important;
+  height: 36px !important;
+  padding: 8px !important;
+  border-radius: 50% !important;
+  background: var(--jn-icon-bg) !important;
+  box-shadow: none !important;
+}
+#app > main a.card-glass h3 {
+  flex: 1;
+  min-width: 0;
+  text-align: left !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  line-height: 1.3 !important;
+  color: var(--jn-ink) !important;
+  /* 名称过长时最多换成两行，不再直接省略 */
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+  white-space: normal !important;
+  overflow: hidden !important;
+  overflow-wrap: anywhere;
+}
+#app > main a.card-glass:hover h3 { color: var(--jn-navy) !important; }
+
+/* 悬停简介遮罩：默认隐藏。需要简介就删掉下面这条 */
+#app > main a.card-glass > div:nth-child(2) { display: none !important; }
+
+/* 右侧外链小图标（纵向居中） */
+#app > main a.card-glass > div:nth-child(3) {
+  top: 0 !important;
+  bottom: 0 !important;
+  right: 16px !important;
+  height: auto !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center;
+}
+#app > main a.card-glass > div:nth-child(3) i {
+  color: var(--jn-navy) !important;
+  line-height: 1 !important;
+}
+
+/* ---------- 底部问候 / 时间天气：白色圆角胶囊 ---------- */
+#app > main .mt-auto {
+  flex-direction: row !important;      /* 问候语 + 时间天气 并排一行（窗口太窄时自动换行） */
+  flex-wrap: wrap;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding-top: 28px !important;
+}
+#app > main .mt-auto > .relative {
+  order: 1;                            /* 日历天气放左 */
+  width: auto !important;
+  min-height: 0 !important;
+}
+#app > main .mt-auto > .rounded-2xl { order: 2; }   /* 问候语放右 */
+/* 两个胶囊统一高度与内边距 */
+#app > main .mt-auto .rounded-2xl {
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: 0 20px !important;
+  align-items: center !important;
+}
+#app > main .mt-auto .rounded-2xl {
+  background: var(--jn-card) !important;
+  border: 0 !important;
+  border-radius: 16px !important;
+  backdrop-filter: none !important;
+  box-shadow: 0 8px 24px -10px var(--jn-shadow) !important;
+}
+#app > main .mt-auto .absolute { display: none !important; }   /* 右下角分类指示器：侧栏已有高亮，隐藏 */
+#app > main .mt-auto [class*="bg-amber-500"],
+#app > main .mt-auto [class*="bg-orange-500"] {
+  background: var(--jn-icon-bg) !important;
+  color: var(--jn-navy) !important;
+  box-shadow: none !important;
+}
+#app > main .mt-auto .text-blue-600,
+#app > main .mt-auto [class*="dark:text-blue-400"] { color: var(--jn-navy) !important; }
+
+/* 页脚 */
+#app > footer {
+  background: transparent !important;
+  border-top: 0 !important;
+}
+
+/* ==========================================================
+   桌面端：顶部导航栏 → 左侧固定侧边栏
+   ========================================================== */
+@media (min-width: 768px) {
+
+  body.min-h-screen #app { padding-left: var(--jn-side-w); }
+
+  /* 侧边栏本体 */
+  header.fixed {
+    top: 0 !important; bottom: 0 !important; left: 0 !important; right: auto !important;
+    width: var(--jn-side-w) !important;
+    height: 100vh !important;
+    background: var(--jn-card) !important;
+    backdrop-filter: none !important;
+    border-bottom: 0 !important;
+    border-right: 0 !important;
+    box-shadow: none !important;
+  }
+
+  header.fixed > .container {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 24px 16px 16px !important;
+    gap: 12px;
+  }
+
+  /* Logo：藏青圆 + 粗体标题 */
+  header.fixed > .container > div:first-child {
+    margin: 0 0 6px !important;
+    padding: 0 8px;
+    gap: 12px !important;
+  }
+  header.fixed > .container > div:first-child > :first-child {
+    border-radius: 50% !important;
+    background: var(--jn-navy) !important;
+    background-image: none !important;
+    box-shadow: none !important;
+  }
+  html.dark header.fixed > .container > div:first-child > :first-child { color: #0b1120 !important; }
+  header.fixed > .container > div:first-child span {
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    background: none !important;
+    color: var(--jn-ink) !important;
+    -webkit-text-fill-color: var(--jn-ink) !important;
+  }
+
+  header.fixed > .container > div:last-child { display: contents !important; }
+
+  /* 搜索：极简，无底框，聚焦才出现底色 */
+  header.fixed > .container > div:last-child > div:first-child {
+    order: 1;
+    width: 100% !important;
+    max-width: none !important;
+    margin-bottom: 6px;
+  }
+  header.fixed input {
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 12px !important;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    color: var(--jn-ink) !important;
+    box-shadow: none !important;
+  }
+  header.fixed input:hover,
+  header.fixed input:focus { background: var(--jn-hover) !important; }
+
+  /* 底部工具按钮 */
+  header.fixed > .container > div:last-child > div:last-child {
+    order: 3;
+    justify-content: space-between;
+    padding-top: 12px;
+  }
+
+  /* 分类列表 */
+  header.fixed nav {
+    order: 2;
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch;
+    flex: 1 1 0 !important;
+    min-height: 0;
+    height: auto !important;
+    gap: 4px;
+    margin: 0 -8px 0 -4px;
+    padding: 0 10px 0 4px;          /* 右侧留 10px，滚动条不再压住分类 */
+    scrollbar-gutter: stable;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(100, 116, 139, .25) transparent;
+  }
+  header.fixed nav::-webkit-scrollbar { width: 4px; }
+  header.fixed nav::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, .25); border-radius: 4px; }
+  header.fixed nav > * { margin-left: 0 !important; }
+  header.fixed nav > .group {
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch !important;
+    width: 100%;
+    height: auto !important;
+    padding: 0 !important;
+  }
+
+  /* 分类按钮：无图标，选中为圆角胶囊 */
+  header.fixed nav > .group > button {
+    width: 100%;
+    justify-content: flex-start !important;
+    padding: 13px 18px !important;
+    border-radius: 16px !important;
+    white-space: nowrap;
+    font-size: 15px !important;
+    font-weight: 500 !important;
+    color: var(--jn-muted) !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  /* 分类图标：保留，统一尺寸，颜色跟随文字（选中时变藏青） */
+  header.fixed nav > .group > button { gap: 12px !important; }
+  header.fixed nav > .group > button img {
+    width: 18px !important;
+    height: 18px !important;
+    flex-shrink: 0;
+    object-fit: contain;
+  }
+  header.fixed nav > .group > button i {
+    width: 18px;
+    flex-shrink: 0;
+    text-align: center;
+    font-size: 15px !important;
+    opacity: .8;
+  }
+  header.fixed nav > .group > button:hover {
+    background: var(--jn-hover) !important;
+    color: var(--jn-ink) !important;
+  }
+  header.fixed nav > .group > button.bg-white {
+    background: var(--jn-pill) !important;
+    color: var(--jn-navy) !important;
+    font-weight: 700 !important;
+  }
+
+  /* 二级分类：在选中的分类下方展开 */
+  header.fixed nav .dropdown-menu {
+    position: static !important;
+    width: 100% !important;
+    max-width: none !important;
+    transform: none !important;
+    padding: 0 0 0 16px !important;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transition: max-height .3s ease, opacity .2s ease !important;
+  }
+  header.fixed nav > .group:has(> button.bg-white) .dropdown-menu {
+    max-height: 600px;
+    padding: 4px 0 6px 16px !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+  header.fixed nav .dropdown-menu > div {
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    gap: 2px !important;
+  }
+  header.fixed nav .dropdown-menu button {
+    width: 100%;
+    justify-content: flex-start !important;
+    padding: 9px 14px !important;
+    border-radius: 12px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    color: var(--jn-muted) !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    transform: none !important;
+  }
+  header.fixed nav .dropdown-menu button:hover {
+    background: var(--jn-hover) !important;
+    color: var(--jn-ink) !important;
+    transform: none !important;
+  }
+  header.fixed nav .dropdown-menu button.bg-blue-600 {
+    background: var(--jn-hover) !important;
+    color: var(--jn-navy) !important;
+    font-weight: 700 !important;
+  }
+  header.fixed nav .dropdown-menu button > span:last-child {
+    margin-left: auto;
+    background: transparent !important;
+    color: inherit !important;
+    opacity: .55;
+  }
+
+  /* 主内容区：卡片居中，四列左右 */
+  #app > main {
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 40px 40px 8px !important;
+  }
+  /* 铺满右侧：列数随窗口宽度自动变化；width:100% 且不用 auto 边距，
+     保证每个分类里的卡片宽度完全一致（不再随内容缩放） */
+  #app > main .grid {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    /* 最多 --jn-max-cols 列：卡片最小宽度取「固定下限」与「容器宽度 / 最大列数」中较大者 */
+    grid-template-columns: repeat(auto-fill, minmax(max(var(--jn-card-min), calc((100% - (var(--jn-max-cols) - 1) * var(--jn-gap)) / var(--jn-max-cols))), 1fr)) !important;
+    gap: var(--jn-gap) !important;
+  }
+}
+
+/* ==========================================================
+   后台 /admin 样式（只作用于后台：body.h-screen）
+   ========================================================== */
+body.h-screen #app { background-color: var(--jn-bg) !important; }
+body.h-screen #app > .flex-1 {
+  background: transparent !important;
+  backdrop-filter: none !important;
+}
+
+/* ---- 左侧边栏 ---- */
+body.h-screen aside.sidebar-glass {
+  width: 252px !important;
+  background: var(--jn-card) !important;
+  backdrop-filter: none !important;
+  border-right: 0 !important;
+}
+body.h-screen aside > div:first-child {
+  height: 72px !important;
+  padding: 0 20px !important;
+  border-bottom: 0 !important;
+}
+body.h-screen aside > div:first-child > div:first-child {
+  font-size: 19px !important;
+  font-weight: 700 !important;
+  color: var(--jn-ink) !important;
+}
+body.h-screen aside > div:first-child i.text-blue-600 { color: var(--jn-navy) !important; }
+body.h-screen aside > .overflow-y-auto {
+  padding: 8px 12px !important;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  scrollbar-color: rgba(100, 116, 139, .25) transparent;
+}
+/* 分类行：圆角、统一内边距、固定行高（防止悬停时行高变化导致抖动） */
+body.h-screen aside > .overflow-y-auto > :is(button, .group):not(.border-dashed) {
+  position: relative;
+  box-sizing: border-box;
+  height: 46px !important;
+  border-radius: 14px !important;
+  padding: 0 16px !important;
+  font-size: 15px !important;
+  border-color: transparent !important;
+}
+/* 悬停出现的「上移/下移/编辑/删除」工具条：脱离文档流，浮在行右侧，不再撑高行 */
+body.h-screen aside > .overflow-y-auto > .group > div:last-child {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+body.h-screen aside > .overflow-y-auto > :is(button, .group):not(.border-dashed):not(.bg-blue-50) {
+  color: var(--jn-muted) !important;
+  background: transparent !important;
+}
+body.h-screen aside > .overflow-y-auto > :is(button, .group):not(.border-dashed):not(.bg-blue-50):hover {
+  background: var(--jn-hover) !important;
+  color: var(--jn-ink) !important;
+}
+/* 选中的分类 / 全部链接：浅蓝胶囊 */
+body.h-screen aside > .overflow-y-auto > .bg-blue-50 {
+  background: var(--jn-pill) !important;
+  color: var(--jn-navy) !important;
+  font-weight: 700 !important;
+}
+/* 底部操作区 */
+body.h-screen aside > div:last-child {
+  border-top: 0 !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  padding: 14px 16px 18px !important;
+}
+body.h-screen aside > div:last-child :is(button, a, label):not(.bg-blue-600) {
+  border-radius: 12px !important;
+  border-color: transparent !important;
+  background: var(--jn-hover) !important;
+  color: var(--jn-muted) !important;
+  box-shadow: none !important;
+}
+body.h-screen aside > div:last-child :is(button, a, label):not(.bg-blue-600):hover {
+  background: var(--jn-pill) !important;
+  color: var(--jn-navy) !important;
+}
+
+/* ---- 主区域顶部栏（二级分类 + 搜索）：悬浮白色圆角条 ---- */
+body.h-screen main.flex-1 { background: transparent !important; }
+body.h-screen main > .glass {
+  margin: 16px 24px 0;
+  padding: 10px 16px !important;
+  border-radius: 18px;
+  background: var(--jn-card) !important;
+  backdrop-filter: none !important;
+  border-bottom: 0 !important;
+  box-shadow: 0 8px 24px -12px var(--jn-shadow);
+}
+body.h-screen main > .glass button:not(.border-dashed) {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+body.h-screen main > .glass button.bg-white:not(.border-dashed) {
+  background: transparent !important;
+  color: var(--jn-muted) !important;
+}
+body.h-screen main > .glass button.bg-white:not(.border-dashed):hover { background: var(--jn-hover) !important; }
+body.h-screen main > .glass button.bg-blue-600 {
+  background: var(--jn-pill) !important;
+  color: var(--jn-navy) !important;
+  font-weight: 700 !important;
+}
+body.h-screen main > .glass button.bg-blue-600 span {
+  background: rgba(100, 116, 139, .18) !important;
+  color: var(--jn-navy) !important;
+}
+body.h-screen main > .glass input {
+  background: var(--jn-bg) !important;
+  border-color: transparent !important;
+  color: var(--jn-ink) !important;
+}
+
+/* ---- 链接列表：白色大圆角行 ---- */
+body.h-screen main > .flex-1.overflow-y-auto { padding: 24px !important; }
+body.h-screen main .space-y-3 > .group {
+  background: var(--jn-card) !important;
+  backdrop-filter: none !important;
+  border: 0 !important;
+  border-radius: 16px !important;
+  padding: 12px 18px !important;
+  box-shadow: 0 8px 24px -14px var(--jn-shadow) !important;
+}
+body.h-screen main .space-y-3 > .group:hover {
+  box-shadow: 0 14px 30px -14px var(--jn-shadow) !important;
+}
+body.h-screen main .space-y-3 > .group > div:first-child {
+  border-radius: 50% !important;
+  background: var(--jn-icon-bg) !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+/* ---- 主按钮、输入框焦点、弹窗 ---- */
+body.h-screen :is(button, a).bg-blue-600 { background: var(--jn-btn) !important; }
+body.h-screen :is(button, a).bg-blue-600:hover { background: var(--jn-btn-hover) !important; }
+body.h-screen main > .glass button.bg-blue-600:hover { background: var(--jn-pill) !important; }
+body.h-screen :is(input, textarea, select):focus { --tw-ring-color: rgba(30, 58, 138, .35) !important; }
+body.h-screen .fixed.inset-0 > .rounded-2xl {
+  border: 0 !important;
+  border-radius: 22px !important;
+  box-shadow: 0 30px 80px -20px rgba(15, 23, 42, .35) !important;
+}
