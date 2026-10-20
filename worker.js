@@ -71,6 +71,7 @@ const I18N_MESSAGES = {
     link_list: "链接列表",
     links: "链接",
     move_up: "上移",
+    drag_sort: "拖动排序",
     move_down: "下移",
     edit_content: "编辑内容源数据",
     unlink: "仅移除引用",
@@ -199,6 +200,7 @@ const I18N_MESSAGES = {
     link_list: "Link List",
     links: "Links",
     move_up: "Move Up",
+    drag_sort: "Drag to reorder",
     move_down: "Move Down",
     edit_content: "Edit Source Data",
     unlink: "Unlink Only",
@@ -1218,6 +1220,9 @@ body{font-family:'Inter',sans-serif}.hide-scrollbar::-webkit-scrollbar{display:n
 .toast-enter-active,.toast-leave-active{transition:all 0.3s ease}.toast-enter-from,.toast-leave-to{opacity:0;transform:translateY(-20px)}
 .glass{background:rgba(255,255,255,0.7);backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid rgba(255,255,255,0.3)}
 .dark .glass{background:rgba(15,23,42,0.7);border-bottom:1px solid rgba(255,255,255,0.05)}
+.drag-src{opacity:.4}
+.drag-before::before,.drag-after::after{content:'';position:absolute;left:0;right:0;height:3px;border-radius:2px;background:#3b82f6;z-index:5;pointer-events:none}
+.drag-before::before{top:-8px}.drag-after::after{bottom:-8px}
 .sidebar-glass{background:rgba(255,255,255,0.6);backdrop-filter:blur(20px) saturate(180%);border-right:1px solid rgba(255,255,255,0.3)}
 .dark .sidebar-glass{background:rgba(15,23,42,0.6);border-right:1px solid rgba(255,255,255,0.05)}
 </style>
@@ -1300,13 +1305,13 @@ body{font-family:'Inter',sans-serif}.hide-scrollbar::-webkit-scrollbar{display:n
       <div class="flex-1 overflow-y-auto p-6 md:p-8">
         <div class="max-w-6xl mx-auto">
           <div class="flex justify-end items-center mb-4" v-if="!showAllMode"><button @click="addItem" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2" :title="t('add_link')"><i class="fas fa-plus"></i> {{ t('add_link') }}</button></div>
-          <div class="space-y-3">
-            <div v-for="(itemId,iIdx) in filteredAdminItems" :key="itemId" class="flex items-center gap-4 bg-white/80 backdrop-blur-sm p-3 rounded-xl border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all group relative dark:bg-slate-800/80 dark:border-slate-700">
-              <div class="w-10 h-10 rounded-lg bg-white flex items-center justify-center shrink-0 border border-slate-100 shadow-sm dark:bg-slate-700 dark:border-slate-600"><img v-if="db.items[itemId]" :src="db.items[itemId].icon||getFav(db.items[itemId].url)" class="w-6 h-6 object-contain" loading="lazy"><i v-else class="fas fa-question text-slate-300"></i></div>
+          <div class="space-y-3" @dragover.prevent @drop.prevent="onDrop">
+            <div v-for="(itemId,iIdx) in filteredAdminItems" :key="itemId" :draggable="canDrag" @dragstart="onDragStart(iIdx,$event)" @dragover="onDragOver(iIdx,$event)" @dragend="onDragEnd" :class="{'cursor-grab':canDrag,'drag-src':dragIdx===iIdx,'drag-before':dragIdx!==null&&dragIdx!==iIdx&&overIdx===iIdx&&dropPos==='before','drag-after':dragIdx!==null&&dragIdx!==iIdx&&overIdx===iIdx&&dropPos==='after'}" class="flex items-center gap-4 bg-white/80 backdrop-blur-sm p-3 rounded-xl border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all group relative dark:bg-slate-800/80 dark:border-slate-700">
+              <div class="w-10 h-10 rounded-lg bg-white flex items-center justify-center shrink-0 border border-slate-100 shadow-sm dark:bg-slate-700 dark:border-slate-600"><img v-if="db.items[itemId]" :src="db.items[itemId].icon||getFav(db.items[itemId].url)" class="w-6 h-6 object-contain" loading="lazy" draggable="false"><i v-else class="fas fa-question text-slate-300"></i></div>
               <div class="flex-1 min-w-0" v-if="db.items[itemId]"><div class="flex items-center gap-2"><span class="font-bold text-slate-700 truncate dark:text-slate-200">{{db.items[itemId].title}}</span><span v-if="db.items[itemId].isPrivate" class="text-[10px] bg-amber-100 text-amber-600 px-1.5 rounded border border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"><i class="fas fa-lock"></i> {{ t('private') }}</span></div><div class="text-xs text-blue-500 truncate mt-0.5 hover:underline">{{db.items[itemId].url}}</div></div>
               <div v-else class="flex-1 text-red-500 text-sm"><i class="fas fa-unlink"></i> 引用已失效</div>
               <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <div class="flex bg-slate-50 rounded-lg border border-slate-200 mr-2 dark:bg-slate-700 dark:border-slate-600" v-if="!showAllMode && !adminSearchQuery"><button @click="moveItem(iIdx,-1)" class="px-2 py-1.5 text-slate-400 hover:text-blue-600 border-r border-slate-200 dark:border-slate-600" :title="t('move_up')"><i class="fas fa-arrow-up text-xs"></i></button><button @click="moveItem(iIdx,1)" class="px-2 py-1.5 text-slate-400 hover:text-blue-600" :title="t('move_down')"><i class="fas fa-arrow-down text-xs"></i></button></div>
+                <div class="flex bg-slate-50 rounded-lg border border-slate-200 mr-2 dark:bg-slate-700 dark:border-slate-600" v-if="!showAllMode && !adminSearchQuery"><span class="px-2 py-1.5 text-slate-400 cursor-grab border-r border-slate-200 dark:border-slate-600" :title="t('drag_sort')"><i class="fas fa-grip-vertical text-xs"></i></span><button @click="moveItem(iIdx,-1)" class="px-2 py-1.5 text-slate-400 hover:text-blue-600 border-r border-slate-200 dark:border-slate-600" :title="t('move_up')"><i class="fas fa-arrow-up text-xs"></i></button><button @click="moveItem(iIdx,1)" class="px-2 py-1.5 text-slate-400 hover:text-blue-600" :title="t('move_down')"><i class="fas fa-arrow-down text-xs"></i></button></div>
                 <button @click="editItem(itemId)" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center transition-colors dark:bg-blue-900/30 dark:text-blue-400" :title="t('edit_content')"><i class="fas fa-pen text-xs"></i></button>
                 <button @click="deleteItem(itemId,iIdx)" class="w-8 h-8 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center transition-colors dark:bg-red-900/30 dark:text-red-400" :title="showAllMode?t('delete_physical'):t('unlink')"><i :class="showAllMode?'fas fa-trash':'fas fa-link-slash'" class="text-xs"></i></button>
               </div>
@@ -1423,6 +1428,47 @@ body{font-family:'Inter',sans-serif}.hide-scrollbar::-webkit-scrollbar{display:n
       
       const curItemList = filteredAdminItems;
 
+      // ===== 拖动排序（仅在具体分类/子分类视图且未搜索时可用）=====
+      let dragFrom = null;
+      const dragIdx = ref(null), overIdx = ref(null), dropPos = ref('before');
+      const canDrag = computed(() => !showAllMode.value && !adminSearchQuery.value);
+      const getCurItemArr = () => {
+          if (!curCat.value) return null;
+          if (curSubIdx.value === -1) return curCat.value.itemIds;
+          const sub = curCat.value.subCategories[curSubIdx.value];
+          return sub ? sub.itemIds : null;
+      };
+      const onDragStart = (idx, e) => {
+          if (!canDrag.value) { e.preventDefault(); return; }
+          dragFrom = idx;
+          overIdx.value = idx;
+          dropPos.value = 'before';
+          e.dataTransfer.effectAllowed = 'move';
+          try { e.dataTransfer.setData('text/plain', String(idx)); } catch (err) {}
+          setTimeout(() => { if (dragFrom === idx) dragIdx.value = idx; }, 0);
+      };
+      const onDragOver = (idx, e) => {
+          if (dragFrom === null) return;
+          const r = e.currentTarget.getBoundingClientRect();
+          const pos = (e.clientY - r.top) > r.height / 2 ? 'after' : 'before';
+          if (overIdx.value !== idx) overIdx.value = idx;
+          if (dropPos.value !== pos) dropPos.value = pos;
+          e.dataTransfer.dropEffect = 'move';
+      };
+      const onDragEnd = () => { dragFrom = null; dragIdx.value = null; overIdx.value = null; };
+      const onDrop = () => {
+          const from = dragFrom;
+          let to = overIdx.value;
+          const arr = getCurItemArr();
+          onDragEnd();
+          if (from === null || to === null || !arr) return;
+          if (dropPos.value === 'after') to += 1;
+          if (from < to) to -= 1;
+          if (from === to) return;
+          const moved = arr.splice(from, 1)[0];
+          arr.splice(to, 0, moved);
+      };
+
       const showToast = (msg, type='success') => { toast.value = {show:true, msg, type}; setTimeout(() => toast.value.show=false, 3000); };
       
       const load = async () => { 
@@ -1510,7 +1556,7 @@ body{font-family:'Inter',sans-serif}.hide-scrollbar::-webkit-scrollbar{display:n
       const exportData = () => { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db.value)); const downloadAnchorNode = document.createElement('a'); downloadAnchorNode.setAttribute("href", dataStr); downloadAnchorNode.setAttribute("download", "nav_backup.json"); document.body.appendChild(downloadAnchorNode); downloadAnchorNode.click(); downloadAnchorNode.remove(); };
       const importData = (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { const json = JSON.parse(e.target.result); if(confirm(t('confirm_overwrite'))) { db.value = json; save(); } } catch(err) { alert(t('file_error')); } }; reader.readAsText(file); };
 
-      return { token, password, db, curCatIdx, curSubIdx, curCat, curItemList, modal, tab, siteTab, searchLib, filteredLib, toast, saving, login, save, getFav, selCat, selSub, addCategory, editCat, delCat, moveCat, addSub, editSub, delSub, addItem, editItem, unlinkItem, deleteItem, moveItem, toggleLibSelect, openSiteSet, saveModal, isImageUrl, presets, exportData, importData, showAllMode, switchToAll, filteredAdminItems, adminSearchQuery, isDark, toggleTheme, t, toggleLang, lang, currentDisplayAdminTitle };
+      return { token, password, db, curCatIdx, curSubIdx, curCat, curItemList, modal, tab, siteTab, searchLib, filteredLib, toast, saving, login, save, getFav, selCat, selSub, addCategory, editCat, delCat, moveCat, addSub, editSub, delSub, addItem, editItem, unlinkItem, deleteItem, moveItem, canDrag, dragIdx, overIdx, dropPos, onDragStart, onDragOver, onDragEnd, onDrop, toggleLibSelect, openSiteSet, saveModal, isImageUrl, presets, exportData, importData, showAllMode, switchToAll, filteredAdminItems, adminSearchQuery, isDark, toggleTheme, t, toggleLang, lang, currentDisplayAdminTitle };
     }
   }).mount('#app');
 </script>
